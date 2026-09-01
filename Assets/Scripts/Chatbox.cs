@@ -5,7 +5,6 @@ using UnityEngine;
 public class ChatBox : MonoBehaviour
 {
     public static ChatBox Instance { get; private set; }
-
     [SerializeField] private TMP_Text textDisplay;
     [SerializeField] private float charactersPerSecond = 30f;
     [SerializeField] private string introMessage = "Shoot the cats";
