@@ -21,7 +21,7 @@ public class BoxAPlayer : Player
             .With("Right", "<Keyboard>/d")
             .With("Right", "<Keyboard>/rightArrow");
 
-        shootAction = new InputAction("Shoot", InputActionType.Button, "<Keyboard>/space");
+        shootAction = new InputAction("Shoot", InputActionType.Button, "<Mouse>/leftButton");
     }
 
     private void OnEnable()
@@ -45,8 +45,7 @@ public class BoxAPlayer : Player
     protected override Vector3 GetMoveInput()
     {
         Vector2 input = moveAction.ReadValue<Vector2>();
-
-        return new Vector3(input.y, 0f, -input.x).normalized;
+        return new Vector3(input.x, 0f, input.y);
     }
 
     protected override bool WantsToShoot()

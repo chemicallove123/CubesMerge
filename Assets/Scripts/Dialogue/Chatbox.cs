@@ -5,26 +5,31 @@ using UnityEngine;
 public class ChatBox : MonoBehaviour
 {
     public static ChatBox Instance { get; private set; }
+
+    [Tooltip("The panel containing both the background box and the text - this whole object gets shown/hidden together.")]
+    [SerializeField] private GameObject chatBoxRoot;
     [SerializeField] private TMP_Text textDisplay;
     [SerializeField] private float charactersPerSecond = 30f;
-    [SerializeField] private string introMessage = "Shoot the cats";
+    [SerializeField] private float autoHideDelay = 5f;
 
     private Coroutine typingRoutine;
+    private Coroutine hideRoutine;
 
     private void Awake()
     {
         Instance = this;
-    }
 
-    private void Start()
-    {
-        ShowMessage(introMessage);
+        if (chatBoxRoot != null)
+            chatBoxRoot.SetActive(false);
     }
 
     public void ShowMessage(string message)
     {
-        if (typingRoutine != null)
-            StopCoroutine(typingRoutine);
+        if (chatBoxRoot != null)
+            chatBoxRoot.SetActive(true);
+
+        if (typingRoutine != null) StopCoroutine(typingRoutine);
+        if (hideRoutine != null) StopCoroutine(hideRoutine);
 
         typingRoutine = StartCoroutine(TypeMessage(message));
     }
@@ -41,5 +46,16 @@ public class ChatBox : MonoBehaviour
         }
 
         typingRoutine = null;
+        hideRoutine = StartCoroutine(HideAfterDelay());
+    }
+
+    private IEnumerator HideAfterDelay()
+    {
+        yield return new WaitForSeconds(autoHideDelay);
+
+        if (chatBoxRoot != null)
+            chatBoxRoot.SetActive(false);
+
+        hideRoutine = null;
     }
 }
