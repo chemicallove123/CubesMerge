@@ -1,3 +1,4 @@
+/*
 using UnityEngine;
 
 public class BoxBOrangeState : IState
@@ -15,3 +16,4 @@ public class BoxBOrangeState : IState
     public void Update() { }
     public void Exit() { }
 }
+*/

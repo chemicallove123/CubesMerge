@@ -1,3 +1,4 @@
+/*
 public class BoxCNormalSizeState : IState
 {
     private readonly BoxCSizeChange context;
@@ -11,3 +12,4 @@ public class BoxCNormalSizeState : IState
     public void Update() { }
     public void Exit() { }
 }
+*/

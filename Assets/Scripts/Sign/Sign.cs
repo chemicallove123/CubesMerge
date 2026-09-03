@@ -1,3 +1,4 @@
+/*
 using UnityEngine;
 
 public class Sign : MonoBehaviour, IInteractable
@@ -10,3 +11,4 @@ public class Sign : MonoBehaviour, IInteractable
             ChatBox.Instance.ShowMessage(message);
     }
 }
+*/

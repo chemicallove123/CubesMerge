@@ -1,3 +1,4 @@
+/*
 using System;
 using System.Collections;
 using UnityEngine;
@@ -120,3 +121,4 @@ public class BoxCSizeChange : MonoBehaviour, IHittable, IReadable
         return lowest;
     }
 }
+*/

@@ -1,3 +1,5 @@
+/*
+
 using UnityEngine;
 
 [RequireComponent(typeof(AudioSource))]
@@ -39,3 +41,5 @@ public class HitSoundPlayer : MonoBehaviour
             audioSource.PlayOneShot(hitSound, volume);
     }
 }
+
+*/

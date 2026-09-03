@@ -5,7 +5,7 @@ public abstract class Player : MonoBehaviour
 {
     [SerializeField] protected float moveSpeed = 6f;
     [SerializeField] protected Gun gun; 
-    [Tooltip("Where picked-up guns get parented - should be a child of the camera so aim follows full look rotation, not just body yaw.")]
+    [Tooltip("Where picked-up guns get parented - should be a child of the camera so aim follows full look rotation.")]
     [SerializeField] private Transform weaponSocket;
 
     public Transform WeaponSocket => weaponSocket;

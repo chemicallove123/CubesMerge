@@ -1,3 +1,4 @@
+/*
 using System;
 using UnityEngine;
 
@@ -68,3 +69,4 @@ public class BoxBColorChange : MonoBehaviour, IHittable, IReadable
         return "Color: #" + ColorUtility.ToHtmlStringRGB(currentColor);
     }
 }
+*/

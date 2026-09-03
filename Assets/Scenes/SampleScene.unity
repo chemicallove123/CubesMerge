@@ -1557,6 +1557,7 @@ MonoBehaviour:
   targetObject: {fileID: 1413216673}
   firstHitMessage: Lurin is no longer an orange cat!
   secondHitMessage: Lurin is having an identity crisis!
+  showFirstMessage: 1
 --- !u!114 &1413216672
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1572,6 +1573,7 @@ MonoBehaviour:
   targetObject: {fileID: 1413216673}
   hitSound: {fileID: 8300000, guid: 051de189bfceb5c40a6f1be5007023d5, type: 3}
   volume: 1
+  audioSource: {fileID: 0}
 --- !u!114 &1413216673
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2195,6 +2197,7 @@ MonoBehaviour:
   targetObject: {fileID: 835559116196020783}
   hitSound: {fileID: 8300000, guid: d04d4e34229eea94c9a6ec6d8d53bd7e, type: 3}
   volume: 1
+  audioSource: {fileID: 0}
 --- !u!82 &835559116196020786
 AudioSource:
   m_ObjectHideFlags: 0
@@ -2307,6 +2310,7 @@ MonoBehaviour:
   targetObject: {fileID: 835559116196020783}
   firstHitMessage: Vinny is getting bigger!
   secondHitMessage: Vinny lost some weight at the gym.
+  showFirstMessage: 1
 --- !u!1001 &1049625281524742418
 PrefabInstance:
   m_ObjectHideFlags: 0
