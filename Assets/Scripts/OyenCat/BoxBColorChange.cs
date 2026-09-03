@@ -12,6 +12,7 @@ public class BoxBColorChange : MonoBehaviour, IHittable, IReadable
     private StateMachine stateMachine;
     private IState orangeState;
     private IState swappedState;
+    private bool isInitializing = true; 
 
     public event Action OnDataChanged;
 
@@ -30,6 +31,7 @@ public class BoxBColorChange : MonoBehaviour, IHittable, IReadable
         swappedState = new BoxBSwappedColorState(this);
 
         stateMachine.ChangeState(orangeState); 
+        isInitializing = false;
     }
 
     private void Update()
@@ -57,7 +59,8 @@ public class BoxBColorChange : MonoBehaviour, IHittable, IReadable
                 materialInstances[i].color = color;
         }
 
-        OnDataChanged?.Invoke();
+        if (!isInitializing)
+            OnDataChanged?.Invoke();
     }
 
     public string ReadData()
