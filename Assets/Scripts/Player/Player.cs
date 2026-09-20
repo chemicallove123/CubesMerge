@@ -60,11 +60,6 @@ public abstract class Player : MonoBehaviour
 
 using UnityEngine;
 
-// Abstract base for anything that moves around, can turn, and can fire
-// a gun. Movement is now relative to the player's own facing direction
-// (transform.right / transform.forward) instead of fixed world axes -
-// that only made sense back when the player never rotated. Now that
-// PlayerLook turns the body with the mouse, movement needs to turn with it.
 [RequireComponent(typeof(Rigidbody))]
 public abstract class Player : MonoBehaviour
 {
