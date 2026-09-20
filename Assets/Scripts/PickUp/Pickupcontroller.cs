@@ -1,125 +1,93 @@
-using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
 public class PickupController : MonoBehaviour
 {
-    [SerializeField] private Camera playerCamera;
-    [Tooltip("Where picked-up items stack - should be a child of the camera, positioned in front of/below it.")]
-    [SerializeField] private Transform carryPoint;
 
-    [Header("Pickup")]
-    [SerializeField] private float pickupRange = 5f;
-    [SerializeField] private float pickupRadius = 1.5f;
-    [SerializeField] private int maxCarried = 5;
-    [SerializeField] private float flyDuration = 0.4f;
-    [SerializeField] private float stackSpacing = 0.3f;
+    [SerializeField] private Transform playerCameraTransform;
+    [SerializeField] private Transform stackHolderTransform;
+    [SerializeField] private float pickupRange = 6f;
+    [SerializeField] private LayerMask pickupLayerMask;
+    [SerializeField] private int maxCarryCount = 5;
+    [SerializeField] private Vector3 stackSlotOffset = new Vector3(0f, 0.15f, 0f);
+    [SerializeField] private float dropInterval = 0.3f;
 
-    [Header("Drop")]
-    [SerializeField] private float dropInterval = 0.3f; 
+    private readonly List<IPickupable> carriedList = new List<IPickupable>();
+    private float dropTimer;
 
     private InputAction pickupAction;
     private InputAction dropAction;
 
-    private readonly List<IPickupable> carriedItems = new List<IPickupable>(); 
-    private int flightsInProgress = 0; 
-    private float lastDropTime = -999f;
-
     private void Awake()
     {
-        pickupAction = new InputAction("Pickup", InputActionType.Button, "<Keyboard>/f");
-        dropAction = new InputAction("Drop", InputActionType.Button, "<Keyboard>/g");
+        pickupAction = new InputAction("PickUp", InputActionType.Button, "<Mouse>/leftButton");
+        dropAction = new InputAction("Drop", InputActionType.Button, "<Mouse>/rightButton");
     }
 
     private void OnEnable()
     {
-        pickupAction?.Enable();
-        dropAction?.Enable();
+        pickupAction.Enable();
+        dropAction.Enable();
     }
 
     private void OnDisable()
     {
-        pickupAction?.Disable();
-        dropAction?.Disable();
+        pickupAction.Disable();
+        dropAction.Disable();
     }
 
     private void OnDestroy()
     {
-        pickupAction?.Dispose();
-        dropAction?.Dispose();
+        pickupAction.Dispose();
+        dropAction.Dispose();
     }
 
     private void Update()
     {
-        if (pickupAction.IsPressed())
-            TryPickupInRange();
-
-        if (dropAction.IsPressed() && Time.time - lastDropTime >= dropInterval)
-            TryDropOne();
+        if (pickupAction.IsPressed()) TryPickUpNearbyObjects();
+        if (dropAction.IsPressed()) TryDropLastObject();
     }
 
-    private void TryPickupInRange()
+    private void TryPickUpNearbyObjects()
     {
-        if (carriedItems.Count >= maxCarried) return;
+        if (carriedList.Count >= maxCarryCount) return;
 
-        Vector3 checkCenter = playerCamera.transform.position + playerCamera.transform.forward * (pickupRange * 0.5f);
-        Collider[] hits = Physics.OverlapSphere(checkCenter, pickupRadius);
-
-        foreach (Collider hit in hits)
+        Collider[] hitColliders = Physics.OverlapSphere(playerCameraTransform.position, pickupRange, pickupLayerMask);
+        foreach (Collider hitCollider in hitColliders)
         {
-            if (carriedItems.Count >= maxCarried) break;
-            if (!hit.TryGetComponent(out IPickupable pickupable)) continue;
-            if (carriedItems.Contains(pickupable)) continue; 
+            if (carriedList.Count >= maxCarryCount) break;
+            if (!hitCollider.TryGetComponent(out IPickupable pickupable)) continue;
+            if (carriedList.Contains(pickupable)) continue;
 
-            StartCoroutine(FlyToCarryPoint(pickupable));
+            Vector3 slotOffset = stackSlotOffset * carriedList.Count;
+            pickupable.PickUp(stackHolderTransform, slotOffset);
+            carriedList.Add(pickupable);
         }
     }
 
-    private IEnumerator FlyToCarryPoint(IPickupable pickupable)
+    private void TryDropLastObject()
     {
-        flightsInProgress++;
-        pickupable.OnPickedUp();
+        if (carriedList.Count == 0) return;
+        if (AnyItemFlying()) return; 
 
-        int slotIndex = carriedItems.Count;
-        carriedItems.Add(pickupable); 
+        dropTimer -= Time.deltaTime;
+        if (dropTimer > 0f) return;
+        dropTimer = dropInterval;
 
-        Transform item = pickupable.PickupTransform;
-        Vector3 startPos = item.position;
-        Quaternion startRot = item.rotation;
-        float elapsed = 0f;
+        int lastIndex = carriedList.Count - 1;
+        IPickupable pickupable = carriedList[lastIndex];
+        carriedList.RemoveAt(lastIndex);
+        pickupable.Drop();
+    }
 
-        while (elapsed < flyDuration)
+    private bool AnyItemFlying()
+    {
+        for (int i = 0; i < carriedList.Count; i++)
         {
-            elapsed += Time.deltaTime;
-            float t = elapsed / flyDuration;
-
-            Vector3 targetPos = carryPoint.position + carryPoint.up * (slotIndex * stackSpacing);
-            item.position = Vector3.Lerp(startPos, targetPos, t);
-            item.rotation = Quaternion.Slerp(startRot, carryPoint.rotation, t);
-
-            yield return null;
+            if (carriedList[i].IsFlying) return true;
         }
-
-        item.SetParent(carryPoint);
-        item.localPosition = Vector3.up * (slotIndex * stackSpacing);
-        item.localRotation = Quaternion.identity;
-
-        flightsInProgress--;
+        return false;
     }
 
-    private void TryDropOne()
-    {
-        if (flightsInProgress > 0) return; 
-        if (carriedItems.Count == 0) return;
-
-        int lastIndex = carriedItems.Count - 1;
-        IPickupable item = carriedItems[lastIndex];
-        carriedItems.RemoveAt(lastIndex);
-
-        Vector3 dropPosition = carryPoint.position - carryPoint.up * 0.5f; 
-        item.OnDropped(dropPosition);
-
-        lastDropTime = Time.time;
-    }
 }

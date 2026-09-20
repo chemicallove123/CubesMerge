@@ -1,11 +1,12 @@
 using UnityEngine;
 
+
 [RequireComponent(typeof(Rigidbody))]
 public abstract class Player : MonoBehaviour
 {
     [SerializeField] protected float moveSpeed = 6f;
-    [SerializeField] protected Gun gun; 
-    [Tooltip("Where picked-up guns get parented - should be a child of the camera so aim follows full look rotation.")]
+    [SerializeField] protected Gun gun; // starting gun, if any - can be swapped at runtime via EquipGun
+    [Tooltip("Where picked-up guns get parented - should be a child of the camera so aim follows full look rotation, not just body yaw.")]
     [SerializeField] private Transform weaponSocket;
 
     public Transform WeaponSocket => weaponSocket;
@@ -43,7 +44,14 @@ public abstract class Player : MonoBehaviour
 
     public void EquipGun(Gun newGun)
     {
+        if (newGun == null)
+        {
+            Debug.LogWarning("[Player] EquipGun called with a null gun.");
+            return;
+        }
+
         gun = newGun;
         gunInterface = newGun;
+        Debug.Log($"[Player] Now equipped with {newGun.name}.");
     }
 }
