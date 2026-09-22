@@ -1,4 +1,3 @@
-/*
 using UnityEngine;
 
 public class HitDialogue : MonoBehaviour
@@ -41,5 +40,3 @@ public class HitDialogue : MonoBehaviour
             ChatBox.Instance.ShowMessage(message);
     }
 }
-
-*/

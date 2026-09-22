@@ -1,4 +1,3 @@
-/*
 using TMPro;
 using UnityEngine;
 
@@ -40,4 +39,3 @@ public class DataDisplay : MonoBehaviour
         textMesh.text = readable.ReadData();
     }
 }
-*/

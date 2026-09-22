@@ -5,34 +5,57 @@ public class Interactor : MonoBehaviour
 {
     [SerializeField] private Camera playerCamera;
     [SerializeField] private float interactRange = 3f;
-    [SerializeField] private LayerMask interactLayerMask; // set this to the "Pickup" layer so the ray can't hit the player's own body
+    [SerializeField] private LayerMask interactLayerMask; // F - guns
+    [SerializeField] private LayerMask readLayerMask;      // E - signs
 
     private InputAction interactAction;
+    private InputAction readAction;
 
     private void Awake()
     {
-        // was bound to "e" - switched to "f" to match what's expected
         interactAction = new InputAction("Interact", InputActionType.Button, "<Keyboard>/f");
+        readAction = new InputAction("Read", InputActionType.Button, "<Keyboard>/e");
     }
 
-    private void OnEnable() => interactAction?.Enable();
-    private void OnDisable() => interactAction?.Disable();
-    private void OnDestroy() => interactAction?.Dispose();
+    private void OnEnable()
+    {
+        interactAction?.Enable();
+        readAction?.Enable();
+    }
+
+    private void OnDisable()
+    {
+        interactAction?.Disable();
+        readAction?.Disable();
+    }
+
+    private void OnDestroy()
+    {
+        interactAction?.Dispose();
+        readAction?.Dispose();
+    }
 
     private void Update()
     {
-        if (!interactAction.WasPressedThisFrame()) return;
+        if (interactAction.WasPressedThisFrame())
+            TryInteract(interactLayerMask, "F");
 
+        if (readAction.WasPressedThisFrame())
+            TryInteract(readLayerMask, "E");
+    }
+
+    private void TryInteract(LayerMask layerMask, string keyLabel)
+    {
         if (playerCamera == null)
         {
             Debug.LogWarning("[Interactor] Player Camera is not assigned - can't raycast.");
             return;
         }
 
-        Debug.Log("[Interactor] F pressed - casting interact ray.");
+        Debug.Log($"[Interactor] {keyLabel} pressed - casting interact ray.");
 
         Ray ray = new Ray(playerCamera.transform.position, playerCamera.transform.forward);
-        if (Physics.Raycast(ray, out RaycastHit hit, interactRange, interactLayerMask))
+        if (Physics.Raycast(ray, out RaycastHit hit, interactRange, layerMask))
         {
             Debug.Log($"[Interactor] Ray hit: {hit.collider.name}");
 

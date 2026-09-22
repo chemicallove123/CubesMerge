@@ -1,4 +1,3 @@
-/*
 using System;
 
 public interface IReadable
@@ -6,4 +5,3 @@ public interface IReadable
     event Action OnDataChanged;
     string ReadData();
 }
-*/

@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -8,9 +9,11 @@ public class WeaponInventory : MonoBehaviour
     [SerializeField] private Transform weaponSocket;
     [SerializeField] private Transform carryPoint;
     [SerializeField] private int maxCarry = 2;
+    [SerializeField] private float tweenDuration = 0.35f;
 
     private readonly List<Gun> equippedClones = new List<Gun>();
-    private readonly List<GameObject> sourceObjects = new List<GameObject>(); // original world objects, reactivated on drop
+    private readonly List<GameObject> sourceObjects = new List<GameObject>(); 
+    private readonly List<Vector3> pickupPositions = new List<Vector3>(); 
 
     private InputAction dropAction;
 
@@ -38,13 +41,17 @@ public class WeaponInventory : MonoBehaviour
         }
 
         Transform slot = equippedClones.Count == 0 ? weaponSocket : carryPoint;
+        Vector3 groundPosition = sourceObject.transform.position;
 
-        Gun spawnedGun = Instantiate(gunPrefab, slot.position, slot.rotation, slot);
+        Gun spawnedGun = Instantiate(gunPrefab, groundPosition, slot.rotation, slot);
         StripVisualCloneComponents(spawnedGun);
 
         equippedClones.Add(spawnedGun);
         sourceObjects.Add(sourceObject);
+        pickupPositions.Add(groundPosition);
         sourceObject.SetActive(false);
+
+        StartCoroutine(TweenLocalPosition(spawnedGun.transform, spawnedGun.transform.localPosition, Vector3.zero));
 
         if (slot == weaponSocket)
             player.EquipGun(spawnedGun);
@@ -60,22 +67,81 @@ public class WeaponInventory : MonoBehaviour
         int lastIndex = equippedClones.Count - 1;
         Gun clone = equippedClones[lastIndex];
         GameObject source = sourceObjects[lastIndex];
+        Vector3 groundPosition = pickupPositions[lastIndex];
         bool wasActiveWeapon = lastIndex == 0;
 
         equippedClones.RemoveAt(lastIndex);
         sourceObjects.RemoveAt(lastIndex);
+        pickupPositions.RemoveAt(lastIndex);
 
-        Transform dropSlot = wasActiveWeapon ? weaponSocket : carryPoint;
+        Vector3 equippedPosition = clone.transform.position; 
         Destroy(clone.gameObject);
 
-        source.transform.position = dropSlot.position;
+        source.transform.position = equippedPosition; 
         source.transform.rotation = Quaternion.identity;
         source.SetActive(true);
+
+        StartCoroutine(DropTween(source, groundPosition));
 
         if (wasActiveWeapon)
             player.UnequipGun();
 
         Debug.Log($"[WeaponInventory] Dropped {source.name}.");
+    }
+
+    private IEnumerator TweenLocalPosition(Transform target, Vector3 startLocalPosition, Vector3 endLocalPosition)
+    {
+        float elapsedTime = 0f;
+
+        while (elapsedTime < tweenDuration)
+        {
+            elapsedTime += Time.deltaTime;
+            float t = elapsedTime / tweenDuration;
+            target.localPosition = Vector3.Lerp(startLocalPosition, endLocalPosition, t);
+            yield return null;
+        }
+
+        target.localPosition = endLocalPosition;
+    }
+
+    private IEnumerator DropTween(GameObject source, Vector3 groundPosition)
+    {
+        Rigidbody sourceRigidbody = source.GetComponent<Rigidbody>();
+        Collider sourceCollider = source.GetComponent<Collider>();
+
+        bool hadGravity = sourceRigidbody != null && sourceRigidbody.useGravity;
+        if (sourceRigidbody != null)
+        {
+            sourceRigidbody.isKinematic = true;
+            sourceRigidbody.useGravity = false;
+        }
+        if (sourceCollider != null) sourceCollider.enabled = false;
+
+        Vector3 startPosition = source.transform.position;
+        float elapsedTime = 0f;
+
+        while (elapsedTime < tweenDuration)
+        {
+            elapsedTime += Time.deltaTime;
+            float t = elapsedTime / tweenDuration;
+            Vector3 newPosition = Vector3.Lerp(startPosition, groundPosition, t);
+
+            if (sourceRigidbody != null)
+                sourceRigidbody.MovePosition(newPosition);
+            else
+                source.transform.position = newPosition;
+
+            yield return null;
+        }
+
+        source.transform.position = groundPosition;
+
+        if (sourceRigidbody != null)
+        {
+            sourceRigidbody.isKinematic = false;
+            sourceRigidbody.useGravity = hadGravity;
+        }
+        if (sourceCollider != null) sourceCollider.enabled = true;
     }
 
     private void StripVisualCloneComponents(Gun spawnedGun)

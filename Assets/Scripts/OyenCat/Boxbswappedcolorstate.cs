@@ -1,4 +1,3 @@
-/*
 using UnityEngine;
 
 public class BoxBSwappedColorState : IState
@@ -19,4 +18,3 @@ public class BoxBSwappedColorState : IState
     public void Update() { }
     public void Exit() { }
 }
-*/
