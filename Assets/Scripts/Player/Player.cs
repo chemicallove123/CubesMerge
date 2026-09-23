@@ -7,17 +7,16 @@ public abstract class Player : MonoBehaviour
     [SerializeField] protected float moveSpeed = 6f;
 
     [Header("Weapon")]
-    [Tooltip("Leave this empty. The player can only shoot after equipping a gun.")]
-    [SerializeField] protected Gun gun;
-
-    [Tooltip("Where picked-up guns get parented. This should normally be a child of the camera so aiming follows the player's full look rotation.")]
     [SerializeField] private Transform weaponSocket;
+
+    [SerializeField] private WeaponInventory weaponInventory;
 
     public Transform WeaponSocket => weaponSocket;
 
     protected Rigidbody rb;
 
-    private IGun gunInterface;
+    private Gun equippedGun;
+
     private Vector3 moveInput;
 
     protected virtual void Awake()
@@ -25,20 +24,19 @@ public abstract class Player : MonoBehaviour
         rb = GetComponent<Rigidbody>();
         rb.freezeRotation = true;
 
-        // Start with NO gun.
-        // The player must pick up gun first.
-        gun = null;
-        gunInterface = null;
+        equippedGun = null;
     }
 
     protected virtual void Update()
     {
         moveInput = GetMoveInput();
 
-        // The player can only shoot if a gun has been equipped.
-        if (gunInterface != null && WantsToShoot())
+        if (WantsToShoot())
         {
-            gunInterface.Shoot();
+            if (weaponInventory != null)
+            {
+                weaponInventory.ShootAllWeapons();
+            }
         }
     }
 
@@ -48,13 +46,15 @@ public abstract class Player : MonoBehaviour
             transform.right * moveInput.x +
             transform.forward * moveInput.z;
 
-        Vector3 velocity = worldMove * moveSpeed;
+        Vector3 velocity =
+            worldMove * moveSpeed;
 
-        rb.linearVelocity = new Vector3(
-            velocity.x,
-            rb.linearVelocity.y,
-            velocity.z
-        );
+        rb.linearVelocity =
+            new Vector3(
+                velocity.x,
+                rb.linearVelocity.y,
+                velocity.z
+            );
     }
 
     protected abstract Vector3 GetMoveInput();
@@ -69,36 +69,21 @@ public abstract class Player : MonoBehaviour
     public void EquipGun(Gun newGun)
     {
         if (newGun == null)
-        {
-            Debug.LogWarning("[Player] EquipGun called with a null gun.");
             return;
-        }
 
-        gun = newGun;
-        gunInterface = newGun;
+        equippedGun = newGun;
 
-        Camera playerCamera = GetPlayerCamera();
+        Camera playerCamera =
+            GetPlayerCamera();
 
         if (playerCamera != null)
         {
             newGun.SetCamera(playerCamera);
         }
-        else
-        {
-            Debug.LogWarning(
-                "[Player] Could not find a Camera in the player's children."
-            );
-        }
-
-        Debug.Log($"[Player] Now equipped with {newGun.name}.");
     }
 
     public void UnequipGun()
     {
-        gun = null;
-        gunInterface = null;
-
-        Debug.Log("[Player] Gun unequipped.");
+        equippedGun = null;
     }
 }
-

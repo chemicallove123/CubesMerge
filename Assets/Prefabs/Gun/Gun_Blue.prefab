@@ -60,6 +60,10 @@ PrefabInstance:
       propertyPath: 'm_Materials.Array.data[0]'
       value: 
       objectReference: {fileID: 2100000, guid: eb0e9b4be1687364a8c1e371f9834753, type: 2}
+    - target: {fileID: 5137352981595725839, guid: e089189a92a76a74e9dbd7a5eceacace, type: 3}
+      propertyPath: weaponItem
+      value: 
+      objectReference: {fileID: 11400000, guid: 8714e20f4f0a3ed43a1652c0bf79ceff, type: 2}
     - target: {fileID: 6073154468535323783, guid: e089189a92a76a74e9dbd7a5eceacace, type: 3}
       propertyPath: 'm_Materials.Array.data[0]'
       value: 
@@ -72,7 +76,8 @@ PrefabInstance:
       propertyPath: 'm_Materials.Array.data[0]'
       value: 
       objectReference: {fileID: 2100000, guid: eb0e9b4be1687364a8c1e371f9834753, type: 2}
-    m_RemovedComponents: []
+    m_RemovedComponents:
+    - {fileID: 4175487132509980126, guid: e089189a92a76a74e9dbd7a5eceacace, type: 3}
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
     m_AddedComponents: []

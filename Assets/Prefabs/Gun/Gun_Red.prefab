@@ -12,6 +12,10 @@ PrefabInstance:
       propertyPath: 'm_Materials.Array.data[0]'
       value: 
       objectReference: {fileID: 2100000, guid: b1a20ef83590ef647992fa48e4836410, type: 2}
+    - target: {fileID: 2824454431317004177, guid: 14f73888b091c79458bec753e2b64153, type: 3}
+      propertyPath: weaponItem
+      value: 
+      objectReference: {fileID: 11400000, guid: 57d508c41d73de1468ddb765a8cccd6d, type: 2}
     - target: {fileID: 3761029922835718937, guid: 14f73888b091c79458bec753e2b64153, type: 3}
       propertyPath: 'm_Materials.Array.data[0]'
       value: 

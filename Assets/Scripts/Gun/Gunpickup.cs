@@ -1,26 +1,98 @@
 using UnityEngine;
 
-public class GunPickup : MonoBehaviour, IInteractable
+[RequireComponent(typeof(Collider))]
+public class GunPickup : MonoBehaviour
 {
-    [SerializeField] private Gun gunPrefab;
+    [Header("Weapon")]
+    [SerializeField] private WeaponItem weaponItem;
 
-    public void Interact()
+    [Header("Pickup Animation")]
+    [SerializeField] private float flySpeed = 12f;
+    [SerializeField] private float arriveDistance = 0.1f;
+
+    private Rigidbody rb;
+    private Collider objectCollider;
+
+    private bool isBeingCollected;
+    private Transform collectionTarget;
+    private WeaponInventory inventory;
+
+    public WeaponItem WeaponItem => weaponItem;
+    public bool IsBeingCollected => isBeingCollected;
+
+    private void Awake()
     {
-        Debug.Log($"[GunPickup] Interact() called on {gameObject.name}.");
+        rb = GetComponent<Rigidbody>();
+        objectCollider = GetComponent<Collider>();
+    }
 
-        WeaponInventory inventory = FindFirstObjectByType<WeaponInventory>();
-        if (inventory == null)
+    public bool BeginPickup(
+        WeaponInventory targetInventory,
+        Transform target)
+    {
+        if (isBeingCollected)
+            return false;
+
+        if (weaponItem == null)
         {
-            Debug.LogWarning("[GunPickup] No WeaponInventory found in the scene.");
-            return;
+            Debug.LogWarning(
+                $"[GunPickup] {name} has no WeaponItem assigned."
+            );
+
+            return false;
         }
 
-        if (gunPrefab == null)
+        if (targetInventory == null || target == null)
+            return false;
+
+        if (!targetInventory.CanAcceptWeapon())
+            return false;
+
+        inventory = targetInventory;
+        collectionTarget = target;
+        isBeingCollected = true;
+
+        if (rb != null)
         {
-            Debug.LogWarning($"[GunPickup] {gameObject.name}'s Gun Prefab field is not assigned.");
-            return;
+            rb.useGravity = false;
+            rb.isKinematic = true;
         }
 
-        inventory.TryEquip(gunPrefab, gameObject);
+        if (objectCollider != null)
+            objectCollider.enabled = false;
+
+        return true;
+    }
+
+    private void Update()
+    {
+        if (!isBeingCollected || collectionTarget == null)
+            return;
+
+        transform.position = Vector3.MoveTowards(
+            transform.position,
+            collectionTarget.position,
+            flySpeed * Time.deltaTime
+        );
+
+        if (Vector3.Distance(
+            transform.position,
+            collectionTarget.position) <= arriveDistance)
+        {
+            FinishPickup();
+        }
+    }
+
+    private void FinishPickup()
+    {
+        if (!isBeingCollected)
+            return;
+
+        isBeingCollected = false;
+
+        if (inventory != null)
+            inventory.CompletePickup(weaponItem);
+
+        Destroy(gameObject);
     }
 }

@@ -5,157 +5,501 @@ using UnityEngine.InputSystem;
 
 public class WeaponInventory : MonoBehaviour
 {
+    [Header("References")]
     [SerializeField] private Player player;
     [SerializeField] private Transform weaponSocket;
-    [SerializeField] private Transform carryPoint;
-    [SerializeField] private int maxCarry = 2;
-    [SerializeField] private float tweenDuration = 0.35f;
+    [SerializeField] private Transform pickupTarget;
+    [SerializeField] private WeaponInventoryUI inventoryUI;
 
-    private readonly List<Gun> equippedClones = new List<Gun>();
-    private readonly List<GameObject> sourceObjects = new List<GameObject>(); 
-    private readonly List<Vector3> pickupPositions = new List<Vector3>(); 
+    [Header("Inventory")]
+    [SerializeField] private int maxWeapons = 10;
 
+    [Header("Pickup")]
+    [SerializeField] private float pickupRange = 6f;
+    [SerializeField] private LayerMask pickupLayerMask;
+    [SerializeField] private float pickupInterval = 0.15f;
+
+    [Header("Drop")]
+    [SerializeField] private float dropInterval = 0.3f;
+    [SerializeField] private float dropForwardDistance = 1.5f;
+
+    private readonly List<WeaponItem> weapons =
+        new List<WeaponItem>();
+
+    private Gun displayedGun;
+
+    private int selectedIndex = -1;
+
+    private InputAction pickupAction;
     private InputAction dropAction;
+    private InputAction scrollAction;
+
+    private float nextPickupTime;
+    private float nextDropTime;
+
+    private int incomingWeapons;
+
+    public int WeaponCount => weapons.Count;
+
+    public int SelectedIndex => selectedIndex;
 
     private void Awake()
     {
-        dropAction = new InputAction("DropGun", InputActionType.Button, "<Keyboard>/g");
+        pickupAction = new InputAction(
+            "PickUpWeapons",
+            InputActionType.Button,
+            "<Keyboard>/f"
+        );
+
+        dropAction = new InputAction(
+            "DropWeapon",
+            InputActionType.Button,
+            "<Keyboard>/g"
+        );
+
+        scrollAction = new InputAction(
+            "ScrollWeapons",
+            InputActionType.Value,
+            "<Mouse>/scroll"
+        );
     }
 
-    private void OnEnable() => dropAction?.Enable();
-    private void OnDisable() => dropAction?.Disable();
-    private void OnDestroy() => dropAction?.Dispose();
+    private void OnEnable()
+    {
+        pickupAction.Enable();
+        dropAction.Enable();
+        scrollAction.Enable();
+    }
+
+    private void OnDisable()
+    {
+        pickupAction.Disable();
+        dropAction.Disable();
+        scrollAction.Disable();
+    }
+
+    private void OnDestroy()
+    {
+        pickupAction.Dispose();
+        dropAction.Dispose();
+        scrollAction.Dispose();
+    }
+
+    private void Start()
+    {
+        RefreshUI();
+    }
 
     private void Update()
     {
-        if (dropAction.WasPressedThisFrame())
-            DropLastEquipped();
+        HandlePickup();
+        HandleDrop();
+        HandleScrolling();
     }
 
-    public bool TryEquip(Gun gunPrefab, GameObject sourceObject)
+    // PICKUP
+    private void HandlePickup()
     {
-        if (equippedClones.Count >= maxCarry)
+        if (!pickupAction.IsPressed())
+            return;
+
+        if (Time.time < nextPickupTime)
+            return;
+
+        nextPickupTime = Time.time + pickupInterval;
+
+        TryPickupNearestWeapon();
+    }
+
+    private void TryPickupNearestWeapon()
+    {
+        if (!CanAcceptWeapon())
+            return;
+
+        Vector3 searchPosition =
+            pickupTarget != null
+                ? pickupTarget.position
+                : transform.position;
+
+        Collider[] colliders = Physics.OverlapSphere(
+            searchPosition,
+            pickupRange,
+            pickupLayerMask,
+            QueryTriggerInteraction.Collide
+        );
+
+        GunPickup nearestPickup = null;
+        float nearestDistance = Mathf.Infinity;
+
+        foreach (Collider hit in colliders)
         {
-            Debug.Log("[WeaponInventory] Already carrying the max number of guns.");
-            return false;
+            GunPickup pickup =
+                hit.GetComponentInParent<GunPickup>();
+
+            if (pickup == null)
+                continue;
+
+            if (pickup.IsBeingCollected)
+                continue;
+
+            float distance = Vector3.Distance(
+                searchPosition,
+                pickup.transform.position
+            );
+
+            if (distance < nearestDistance)
+            {
+                nearestDistance = distance;
+                nearestPickup = pickup;
+            }
         }
 
-        Transform slot = equippedClones.Count == 0 ? weaponSocket : carryPoint;
-        Vector3 groundPosition = sourceObject.transform.position;
+        if (nearestPickup == null)
+            return;
 
-        Gun spawnedGun = Instantiate(gunPrefab, groundPosition, slot.rotation, slot);
-        StripVisualCloneComponents(spawnedGun);
-
-        equippedClones.Add(spawnedGun);
-        sourceObjects.Add(sourceObject);
-        pickupPositions.Add(groundPosition);
-        sourceObject.SetActive(false);
-
-        StartCoroutine(TweenLocalPosition(spawnedGun.transform, spawnedGun.transform.localPosition, Vector3.zero));
-
-        if (slot == weaponSocket)
-            player.EquipGun(spawnedGun);
-
-        Debug.Log($"[WeaponInventory] Equipped {gunPrefab.name} into {(slot == weaponSocket ? "WeaponSocket" : "CarryPoint")}.");
-        return true;
-    }
-
-    private void DropLastEquipped()
-    {
-        if (equippedClones.Count == 0) return;
-
-        int lastIndex = equippedClones.Count - 1;
-        Gun clone = equippedClones[lastIndex];
-        GameObject source = sourceObjects[lastIndex];
-        Vector3 groundPosition = pickupPositions[lastIndex];
-        bool wasActiveWeapon = lastIndex == 0;
-
-        equippedClones.RemoveAt(lastIndex);
-        sourceObjects.RemoveAt(lastIndex);
-        pickupPositions.RemoveAt(lastIndex);
-
-        Vector3 equippedPosition = clone.transform.position; 
-        Destroy(clone.gameObject);
-
-        source.transform.position = equippedPosition; 
-        source.transform.rotation = Quaternion.identity;
-        source.SetActive(true);
-
-        StartCoroutine(DropTween(source, groundPosition));
-
-        if (wasActiveWeapon)
-            player.UnequipGun();
-
-        Debug.Log($"[WeaponInventory] Dropped {source.name}.");
-    }
-
-    private IEnumerator TweenLocalPosition(Transform target, Vector3 startLocalPosition, Vector3 endLocalPosition)
-    {
-        float elapsedTime = 0f;
-
-        while (elapsedTime < tweenDuration)
+        if (nearestPickup.BeginPickup(this, pickupTarget))
         {
-            elapsedTime += Time.deltaTime;
-            float t = elapsedTime / tweenDuration;
-            target.localPosition = Vector3.Lerp(startLocalPosition, endLocalPosition, t);
+            incomingWeapons++;
+        }
+    }
+
+    public bool CanAcceptWeapon()
+    {
+        return weapons.Count + incomingWeapons < maxWeapons;
+    }
+
+    public void CompletePickup(WeaponItem item)
+    {
+        incomingWeapons =
+            Mathf.Max(0, incomingWeapons - 1);
+
+        if (item == null)
+            return;
+
+        if (weapons.Count >= maxWeapons)
+            return;
+
+        weapons.Add(item);
+
+        // First collected weapon becomes selected.
+        if (selectedIndex < 0)
+        {
+            selectedIndex = 0;
+            DisplaySelectedWeapon();
+        }
+
+        RefreshUI();
+
+        Debug.Log(
+            $"[WeaponInventory] Added {item.weaponName}. " +
+            $"Inventory: {weapons.Count}/{maxWeapons}"
+        );
+    }
+
+    // DISPLAYED WEAPON
+    private void DisplaySelectedWeapon()
+    {
+        if (displayedGun != null)
+        {
+            Destroy(displayedGun.gameObject);
+            displayedGun = null;
+        }
+
+        if (weapons.Count == 0)
+        {
+            selectedIndex = -1;
+
+            if (player != null)
+                player.UnequipGun();
+
+            RefreshUI();
+            return;
+        }
+
+        selectedIndex = Mathf.Clamp(
+            selectedIndex,
+            0,
+            weapons.Count - 1
+        );
+
+        WeaponItem item = weapons[selectedIndex];
+
+        if (item == null || item.equippedPrefab == null)
+        {
+            Debug.LogWarning(
+                "[WeaponInventory] Selected WeaponItem " +
+                "has no equipped prefab."
+            );
+
+            return;
+        }
+
+        displayedGun = Instantiate(
+            item.equippedPrefab,
+            weaponSocket
+        );
+
+        displayedGun.transform.localPosition =
+            Vector3.zero;
+
+        displayedGun.transform.localRotation =
+            Quaternion.identity;
+
+        displayedGun.transform.localScale =
+            Vector3.one;
+
+        RemoveWorldPhysics(displayedGun.gameObject);
+
+        if (player != null)
+            player.EquipGun(displayedGun);
+
+        RefreshUI();
+    }
+
+    private void RemoveWorldPhysics(GameObject gunObject)
+    {
+        Rigidbody[] rigidbodies =
+            gunObject.GetComponentsInChildren<Rigidbody>();
+
+        foreach (Rigidbody body in rigidbodies)
+        {
+            body.isKinematic = true;
+            body.useGravity = false;
+        }
+
+        Collider[] colliders =
+            gunObject.GetComponentsInChildren<Collider>();
+
+        foreach (Collider col in colliders)
+        {
+            col.enabled = false;
+        }
+
+        GunPickup[] pickups =
+            gunObject.GetComponentsInChildren<GunPickup>();
+
+        foreach (GunPickup pickup in pickups)
+        {
+            pickup.enabled = false;
+        }
+    }
+
+    // SCROLLING
+    private void HandleScrolling()
+    {
+        if (weapons.Count <= 1)
+            return;
+
+        Vector2 scroll =
+            scrollAction.ReadValue<Vector2>();
+
+        if (scroll.y > 0.01f)
+        {
+            MoveSelection(-1);
+        }
+        else if (scroll.y < -0.01f)
+        {
+            MoveSelection(1);
+        }
+    }
+
+    private void MoveSelection(int direction)
+    {
+        if (weapons.Count == 0)
+            return;
+
+        selectedIndex += direction;
+
+        if (selectedIndex < 0)
+            selectedIndex = weapons.Count - 1;
+
+        if (selectedIndex >= weapons.Count)
+            selectedIndex = 0;
+
+        DisplaySelectedWeapon();
+    }
+
+    // SHOOT ALL WEAPONS
+    public void ShootAllWeapons()
+    {
+        if (weapons.Count == 0)
+            return;
+
+        StartCoroutine(ShootAllRoutine());
+    }
+
+    private IEnumerator ShootAllRoutine()
+    {
+        for (int i = 0; i < weapons.Count; i++)
+        {
+            WeaponItem item = weapons[i];
+
+            if (item == null ||
+                item.equippedPrefab == null)
+            {
+                continue;
+            }
+
+            // The selected gun already exists physically.
+            if (i == selectedIndex &&
+                displayedGun != null)
+            {
+                displayedGun.Shoot();
+                continue;
+            }
+
+            Gun temporaryGun = Instantiate(
+                item.equippedPrefab,
+                weaponSocket
+            );
+
+            temporaryGun.transform.localPosition =
+                Vector3.zero;
+
+            temporaryGun.transform.localRotation =
+                Quaternion.identity;
+
+            temporaryGun.gameObject.SetActive(false);
+
+            Camera playerCamera =
+                player != null
+                    ? player.GetPlayerCamera()
+                    : null;
+
+            if (playerCamera != null)
+                temporaryGun.SetCamera(playerCamera);
+
+            temporaryGun.gameObject.SetActive(true);
+
+            // Hide the model but keep Gun functional.
+            Renderer[] renderers =
+                temporaryGun.GetComponentsInChildren<Renderer>();
+
+            foreach (Renderer renderer in renderers)
+                renderer.enabled = false;
+
+            temporaryGun.Shoot();
+
+            // Keep it alive briefly so Shoot() can spawn
+            // whatever projectile this weapon uses.
             yield return null;
-        }
 
-        target.localPosition = endLocalPosition;
+            Destroy(temporaryGun.gameObject);
+        }
     }
 
-    private IEnumerator DropTween(GameObject source, Vector3 groundPosition)
+    // DROP
+   private void HandleDrop()
     {
-        Rigidbody sourceRigidbody = source.GetComponent<Rigidbody>();
-        Collider sourceCollider = source.GetComponent<Collider>();
+        if (!dropAction.IsPressed())
+            return;
 
-        bool hadGravity = sourceRigidbody != null && sourceRigidbody.useGravity;
-        if (sourceRigidbody != null)
-        {
-            sourceRigidbody.isKinematic = true;
-            sourceRigidbody.useGravity = false;
-        }
-        if (sourceCollider != null) sourceCollider.enabled = false;
+        if (Time.time < nextDropTime)
+            return;
 
-        Vector3 startPosition = source.transform.position;
-        float elapsedTime = 0f;
+        if (incomingWeapons > 0)
+            return;
 
-        while (elapsedTime < tweenDuration)
-        {
-            elapsedTime += Time.deltaTime;
-            float t = elapsedTime / tweenDuration;
-            Vector3 newPosition = Vector3.Lerp(startPosition, groundPosition, t);
+        nextDropTime =
+            Time.time + dropInterval;
 
-            if (sourceRigidbody != null)
-                sourceRigidbody.MovePosition(newPosition);
-            else
-                source.transform.position = newPosition;
-
-            yield return null;
-        }
-
-        source.transform.position = groundPosition;
-
-        if (sourceRigidbody != null)
-        {
-            sourceRigidbody.isKinematic = false;
-            sourceRigidbody.useGravity = hadGravity;
-        }
-        if (sourceCollider != null) sourceCollider.enabled = true;
+        DropLastWeapon();
     }
 
-    private void StripVisualCloneComponents(Gun spawnedGun)
+    private void DropLastWeapon()
     {
-        if (spawnedGun.TryGetComponent(out PickupableObject spawnedPickupable))
-            DestroyImmediate(spawnedPickupable);
+        if (weapons.Count == 0)
+            return;
 
-        if (spawnedGun.TryGetComponent(out GunPickup spawnedGunPickup))
-            DestroyImmediate(spawnedGunPickup);
+        int dropIndex = weapons.Count - 1;
 
-        if (spawnedGun.TryGetComponent(out Rigidbody spawnedRigidbody))
-            DestroyImmediate(spawnedRigidbody);
+        WeaponItem item = weapons[dropIndex];
 
-        if (spawnedGun.TryGetComponent(out Collider spawnedCollider))
-            DestroyImmediate(spawnedCollider);
+        weapons.RemoveAt(dropIndex);
+
+        SpawnDroppedWeapon(item);
+
+        if (weapons.Count == 0)
+        {
+            selectedIndex = -1;
+
+            if (displayedGun != null)
+            {
+                Destroy(displayedGun.gameObject);
+                displayedGun = null;
+            }
+
+            if (player != null)
+                player.UnequipGun();
+        }
+        else
+        {
+            if (selectedIndex >= weapons.Count)
+                selectedIndex = weapons.Count - 1;
+
+            DisplaySelectedWeapon();
+        }
+
+        RefreshUI();
+
+        Debug.Log(
+            $"[WeaponInventory] Dropped {item.weaponName}."
+        );
+    }
+
+    private void SpawnDroppedWeapon(WeaponItem item)
+    {
+        if (item == null || item.worldPrefab == null)
+        {
+            Debug.LogWarning(
+                "[WeaponInventory] Weapon has no world prefab."
+            );
+
+            return;
+        }
+
+        Camera camera =
+            player != null
+                ? player.GetPlayerCamera()
+                : null;
+
+        Vector3 spawnPosition =
+            transform.position + transform.forward;
+
+        Quaternion spawnRotation =
+            Quaternion.identity;
+
+        if (camera != null)
+        {
+            spawnPosition =
+                camera.transform.position +
+                camera.transform.forward *
+                dropForwardDistance;
+
+            spawnRotation =
+                Quaternion.Euler(
+                    0f,
+                    camera.transform.eulerAngles.y,
+                    0f
+                );
+        }
+
+        Instantiate(
+            item.worldPrefab,
+            spawnPosition,
+            spawnRotation
+        );
+    }
+
+    // UI
+    private void RefreshUI()
+    {
+        if (inventoryUI == null)
+            return;
+
+        inventoryUI.Refresh(
+            weapons,
+            selectedIndex
+        );
     }
 }

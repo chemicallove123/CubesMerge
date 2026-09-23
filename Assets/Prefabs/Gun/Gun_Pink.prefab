@@ -8,6 +8,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 770184227441997139, guid: 631557939e969da4781ad75fcb98b71e, type: 3}
+      propertyPath: weaponItem
+      value: 
+      objectReference: {fileID: 11400000, guid: ab17a20db79441d4aa0cd3d5ce9044f5, type: 2}
     - target: {fileID: 1851991993485924827, guid: 631557939e969da4781ad75fcb98b71e, type: 3}
       propertyPath: 'm_Materials.Array.data[0]'
       value: 

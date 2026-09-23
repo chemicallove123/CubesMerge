@@ -1,3 +1,4 @@
+/*
 using UnityEngine;
 
 public interface IPickupable
@@ -9,3 +10,4 @@ public interface IPickupable
     void Drop();
 
 }
+*/

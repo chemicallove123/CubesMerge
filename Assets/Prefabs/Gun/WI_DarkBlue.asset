@@ -1,0 +1,19 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bdee78cd4418ee148a4d26945ac7c1f2, type: 3}
+  m_Name: WI_DarkBlue
+  m_EditorClassIdentifier: Assembly-CSharp::WeaponItem
+  weaponName: 
+  description: 
+  icon: {fileID: 21300000, guid: a8227cc9e6bb29a4880eee8efab7ffe1, type: 3}
+  equippedPrefab: {fileID: 1949358691310861298, guid: e11d11d0941fbc348a1aa33b8e26770f, type: 3}
+  worldPrefab: {fileID: 284348403483909190, guid: e11d11d0941fbc348a1aa33b8e26770f, type: 3}
