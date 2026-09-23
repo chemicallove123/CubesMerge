@@ -26,7 +26,7 @@ public abstract class Player : MonoBehaviour
         rb.freezeRotation = true;
 
         // Start with NO gun.
-        // The player must pick up Gun_black or Gun_white first.
+        // The player must pick up gun first.
         gun = null;
         gunInterface = null;
     }
