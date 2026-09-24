@@ -37,6 +37,7 @@ public class Gun : MonoBehaviour, IGun
             Debug.LogWarning(
                 $"[Gun] {name}: Bullet Prefab is missing."
             );
+
             return;
         }
 
@@ -45,6 +46,7 @@ public class Gun : MonoBehaviour, IGun
             Debug.LogWarning(
                 $"[Gun] {name}: Fire Point is missing."
             );
+
             return;
         }
 
@@ -53,15 +55,18 @@ public class Gun : MonoBehaviour, IGun
             Debug.LogWarning(
                 $"[Gun] {name}: Player Camera is missing."
             );
+
             return;
         }
 
-        nextFireTime = Time.time + fireRate;
+        nextFireTime =
+            Time.time + fireRate;
 
-        // Aim from centre of screen.
-        Ray cameraRay = playerCamera.ViewportPointToRay(
-            new Vector3(0.5f, 0.5f, 0f)
-        );
+        // Aim from the centre of the screen.
+        Ray cameraRay =
+            playerCamera.ViewportPointToRay(
+                new Vector3(0.5f, 0.5f, 0f)
+            );
 
         Vector3 targetPoint;
 
@@ -84,14 +89,15 @@ public class Gun : MonoBehaviour, IGun
         Vector3 shootDirection =
             (targetPoint - firePoint.position).normalized;
 
-        GameObject bullet = Instantiate(
-            bulletPrefab,
-            firePoint.position,
-            Quaternion.LookRotation(shootDirection)
-        );
+        GameObject bullet =
+            Instantiate(
+                bulletPrefab,
+                firePoint.position,
+                Quaternion.LookRotation(shootDirection)
+            );
 
-        // Prevent the bullet immediately colliding with
-        // colliders belonging to this gun.
+        // Prevent bullet from immediately colliding
+        // with the gun that fired it.
         Collider bulletCollider =
             bullet.GetComponent<Collider>();
 

@@ -13,6 +13,7 @@ public abstract class Player : MonoBehaviour
     public Transform WeaponSocket => weaponSocket;
 
     protected Rigidbody rb;
+
     private Vector3 moveInput;
 
     protected virtual void Awake()
@@ -25,8 +26,8 @@ public abstract class Player : MonoBehaviour
     {
         moveInput = GetMoveInput();
 
-        if(WantsToShoot())
-{
+        if (WantsToShoot())
+        {
             Debug.Log("[PLAYER] Shoot input detected!");
 
             if (weaponInventory != null)
@@ -36,7 +37,9 @@ public abstract class Player : MonoBehaviour
             }
             else
             {
-                Debug.LogError("[PLAYER] WeaponInventory is NOT assigned!");
+                Debug.LogError(
+                    "[PLAYER] WeaponInventory is NOT assigned!"
+                );
             }
         }
     }
@@ -47,13 +50,15 @@ public abstract class Player : MonoBehaviour
             transform.right * moveInput.x +
             transform.forward * moveInput.z;
 
-        Vector3 velocity = worldMove * moveSpeed;
+        Vector3 velocity =
+            worldMove * moveSpeed;
 
-        rb.linearVelocity = new Vector3(
-            velocity.x,
-            rb.linearVelocity.y,
-            velocity.z
-        );
+        rb.linearVelocity =
+            new Vector3(
+                velocity.x,
+                rb.linearVelocity.y,
+                velocity.z
+            );
     }
 
     protected abstract Vector3 GetMoveInput();
