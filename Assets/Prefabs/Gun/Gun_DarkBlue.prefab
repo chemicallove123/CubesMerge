@@ -56,6 +56,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: Gun_DarkBlue
       objectReference: {fileID: 0}
+    - target: {fileID: 4196332729794656065, guid: 574a4051ca3ebf849aa475dc8dc3bc04, type: 3}
+      propertyPath: m_Enabled
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 4529433214569486299, guid: 574a4051ca3ebf849aa475dc8dc3bc04, type: 3}
       propertyPath: 'm_Materials.Array.data[0]'
       value: 
@@ -68,6 +72,10 @@ PrefabInstance:
       propertyPath: 'm_Materials.Array.data[0]'
       value: 
       objectReference: {fileID: 2100000, guid: a9318a15eb098d64eb0bde9ad19fc8ca, type: 2}
+    - target: {fileID: 5973177781895980981, guid: 574a4051ca3ebf849aa475dc8dc3bc04, type: 3}
+      propertyPath: m_Enabled
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 5973177781895980981, guid: 574a4051ca3ebf849aa475dc8dc3bc04, type: 3}
       propertyPath: 'm_Materials.Array.data[0]'
       value: 

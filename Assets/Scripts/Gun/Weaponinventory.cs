@@ -227,10 +227,7 @@ public class WeaponInventory : MonoBehaviour
         );
     }
 
-    // =====================================================
     // CREATE INVENTORY GUN
-    // =====================================================
-
     private void CreateRuntimeGun(WeaponItem item)
     {
         if (weaponSocket == null)
@@ -257,9 +254,6 @@ public class WeaponInventory : MonoBehaviour
 
         gun.transform.localRotation =
             Quaternion.identity;
-
-        gun.transform.localScale =
-            Vector3.one;
 
         PrepareInventoryGun(gun);
 
