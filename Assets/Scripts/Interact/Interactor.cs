@@ -37,9 +37,6 @@ public class Interactor : MonoBehaviour
 
     private void Update()
     {
-        if (interactAction.WasPressedThisFrame())
-            TryInteract(interactLayerMask, "F");
-
         if (readAction.WasPressedThisFrame())
             TryInteract(readLayerMask, "E");
     }

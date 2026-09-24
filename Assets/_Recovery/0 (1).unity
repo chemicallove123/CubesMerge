@@ -5733,8 +5733,7 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
-    m_RemovedComponents:
-    - {fileID: 128163726487796696, guid: 9db6d58709f7eb84eab0ddc136cea5ba, type: 3}
+    m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
     m_AddedComponents: []
@@ -8012,7 +8011,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BoxAPlayer
   moveSpeed: 5.95
   weaponSocket: {fileID: 1236237397}
-  weaponInventory: {fileID: 1176128848}
+  weaponInventory: {fileID: 0}
 --- !u!114 &1049625281524742421
 MonoBehaviour:
   m_ObjectHideFlags: 0

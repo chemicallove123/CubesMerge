@@ -5,27 +5,23 @@ public class Gun : MonoBehaviour, IGun
     [Header("Bullet")]
     [SerializeField] private GameObject bulletPrefab;
 
-    [Tooltip("The point where the bullet physically comes out of the gun.")]
+    [Tooltip("Point where the bullet comes out.")]
     [SerializeField] private Transform firePoint;
 
     [SerializeField] private float bulletSpeed = 20f;
 
-    [Tooltip("Time between shots in seconds.")]
+    [Tooltip("Time between shots.")]
     [SerializeField] private float fireRate = 0.3f;
 
     [Header("Aiming")]
-    [Tooltip("Camera used to determine where the crosshair is aiming.")]
     [SerializeField] private Camera playerCamera;
 
-    [Tooltip("Maximum distance the gun can aim.")]
     [SerializeField] private float aimRange = 100f;
 
-    [Tooltip("Layers that the aiming ray can hit.")]
     [SerializeField] private LayerMask aimLayerMask = ~0;
 
     private float nextFireTime;
 
-    /// Gives this gun the player's camera when the player equips the gun.
     public void SetCamera(Camera camera)
     {
         playerCamera = camera;
@@ -33,14 +29,13 @@ public class Gun : MonoBehaviour, IGun
 
     public void Shoot()
     {
-        // Prevent shooting faster than the fire rate.
         if (Time.time < nextFireTime)
             return;
 
         if (bulletPrefab == null)
         {
             Debug.LogWarning(
-                $"[Gun] {gameObject.name} is missing a Bullet Prefab."
+                $"[Gun] {name}: Bullet Prefab is missing."
             );
             return;
         }
@@ -48,7 +43,7 @@ public class Gun : MonoBehaviour, IGun
         if (firePoint == null)
         {
             Debug.LogWarning(
-                $"[Gun] {gameObject.name} is missing a Fire Point."
+                $"[Gun] {name}: Fire Point is missing."
             );
             return;
         }
@@ -56,14 +51,14 @@ public class Gun : MonoBehaviour, IGun
         if (playerCamera == null)
         {
             Debug.LogWarning(
-                $"[Gun] {gameObject.name} has no Player Camera assigned."
+                $"[Gun] {name}: Player Camera is missing."
             );
             return;
         }
 
-        // Set the next allowed shooting time.
         nextFireTime = Time.time + fireRate;
 
+        // Aim from centre of screen.
         Ray cameraRay = playerCamera.ViewportPointToRay(
             new Vector3(0.5f, 0.5f, 0f)
         );
@@ -81,7 +76,6 @@ public class Gun : MonoBehaviour, IGun
         }
         else
         {
-
             targetPoint =
                 cameraRay.origin +
                 cameraRay.direction * aimRange;
@@ -90,25 +84,46 @@ public class Gun : MonoBehaviour, IGun
         Vector3 shootDirection =
             (targetPoint - firePoint.position).normalized;
 
-        GameObject bulletObj = Instantiate(
+        GameObject bullet = Instantiate(
             bulletPrefab,
             firePoint.position,
             Quaternion.LookRotation(shootDirection)
         );
 
-        Rigidbody bulletRigidbody =
-            bulletObj.GetComponent<Rigidbody>();
+        // Prevent the bullet immediately colliding with
+        // colliders belonging to this gun.
+        Collider bulletCollider =
+            bullet.GetComponent<Collider>();
 
-        if (bulletRigidbody != null)
+        if (bulletCollider != null)
         {
-            bulletRigidbody.linearVelocity =
+            Collider[] gunColliders =
+                GetComponentsInChildren<Collider>();
+
+            foreach (Collider gunCollider in gunColliders)
+            {
+                if (gunCollider != null)
+                {
+                    Physics.IgnoreCollision(
+                        bulletCollider,
+                        gunCollider
+                    );
+                }
+            }
+        }
+
+        Rigidbody bulletRb =
+            bullet.GetComponent<Rigidbody>();
+
+        if (bulletRb != null)
+        {
+            bulletRb.linearVelocity =
                 shootDirection * bulletSpeed;
         }
         else
         {
             Debug.LogWarning(
-                $"[Gun] Bullet prefab '{bulletPrefab.name}' " +
-                "does not have a Rigidbody."
+                $"[Gun] Bullet '{bullet.name}' has no Rigidbody."
             );
         }
     }
