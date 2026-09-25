@@ -16,26 +16,28 @@ public class Interactor : MonoBehaviour
 
     private void Awake()
     {
+        // R = interact/read signs
+        // E = rotating weapons
         readAction = new InputAction(
             "Read",
             InputActionType.Button,
-            "<Keyboard>/e"
+            "<Keyboard>/r"
         );
     }
 
     private void OnEnable()
     {
-        readAction.Enable();
+        readAction?.Enable();
     }
 
     private void OnDisable()
     {
-        readAction.Disable();
+        readAction?.Disable();
     }
 
     private void OnDestroy()
     {
-        readAction.Dispose();
+        readAction?.Dispose();
     }
 
     private void Update()
@@ -53,9 +55,12 @@ public class Interactor : MonoBehaviour
             Debug.LogWarning(
                 "[Interactor] Player Camera is not assigned."
             );
+
             return;
         }
 
+        // Ray comes directly from the centre of the screen,
+        // matching your crosshair.
         Ray ray = playerCamera.ViewportPointToRay(
             new Vector3(0.5f, 0.5f, 0f)
         );

@@ -11,6 +11,9 @@ public class WeaponInventory : MonoBehaviour
     [SerializeField] private Transform pickupTarget;
     [SerializeField] private WeaponInventoryUI inventoryUI;
 
+    [Header("Weapon Formation")]
+    [SerializeField] private WeaponOrbit weaponOrbit;
+
     [Header("Inventory")]
     [SerializeField] private int maxWeapons = 12;
 
@@ -25,13 +28,16 @@ public class WeaponInventory : MonoBehaviour
     private readonly List<WeaponItem> weapons =
         new List<WeaponItem>();
 
-    private Gun displayedGun;
+    private readonly List<Gun> activeGuns =
+        new List<Gun>();
 
     private int selectedIndex = -1;
 
     private InputAction pickupAction;
     private InputAction dropAction;
-    private InputAction scrollAction;
+
+    private InputAction rotateLeftAction;
+    private InputAction rotateRightAction;
 
     private float nextDropTime;
 
@@ -43,27 +49,32 @@ public class WeaponInventory : MonoBehaviour
 
     private void Awake()
     {
-        Debug.Log(
-            $"[WeaponInventory] AWAKE on '{gameObject.name}' " +
-            $"InstanceID={GetInstanceID()}"
-        );
-
+        // F = Pick up weapon
         pickupAction = new InputAction(
             "PickUpWeapon",
             InputActionType.Button,
             "<Keyboard>/f"
         );
 
+        // G = Drop weapon
         dropAction = new InputAction(
             "DropWeapon",
             InputActionType.Button,
             "<Keyboard>/g"
         );
 
-        scrollAction = new InputAction(
-            "ScrollWeapons",
-            InputActionType.Value,
-            "<Mouse>/scroll"
+        // Q = Rotate weapons left
+        rotateLeftAction = new InputAction(
+            "RotateWeaponsLeft",
+            InputActionType.Button,
+            "<Keyboard>/q"
+        );
+
+        // E = Rotate weapons right
+        rotateRightAction = new InputAction(
+            "RotateWeaponsRight",
+            InputActionType.Button,
+            "<Keyboard>/e"
         );
     }
 
@@ -71,36 +82,42 @@ public class WeaponInventory : MonoBehaviour
     {
         pickupAction?.Enable();
         dropAction?.Enable();
-        scrollAction?.Enable();
+
+        rotateLeftAction?.Enable();
+        rotateRightAction?.Enable();
     }
 
     private void OnDisable()
     {
         pickupAction?.Disable();
         dropAction?.Disable();
-        scrollAction?.Disable();
+
+        rotateLeftAction?.Disable();
+        rotateRightAction?.Disable();
     }
 
     private void OnDestroy()
     {
         pickupAction?.Dispose();
         dropAction?.Dispose();
-        scrollAction?.Dispose();
+
+        rotateLeftAction?.Dispose();
+        rotateRightAction?.Dispose();
     }
 
     private void Start()
     {
         RefreshUI();
+        RefreshOrbit();
     }
 
     private void Update()
     {
         HandlePickup();
         HandleDrop();
-        HandleScrolling();
+        HandleWeaponRotation();
     }
 
-  
     // PICKUP
     private void HandlePickup()
     {
@@ -118,11 +135,10 @@ public class WeaponInventory : MonoBehaviour
 
     private void TryPickupCrosshairWeapon()
     {
-        // Check whether there is room BEFORE starting pickup.
         if (!CanAcceptWeapon())
         {
             Debug.Log(
-                $"[WeaponInventory] Inventory is full. " +
+                $"[WeaponInventory] Inventory full: " +
                 $"{weapons.Count}/{maxWeapons}"
             );
 
@@ -132,7 +148,7 @@ public class WeaponInventory : MonoBehaviour
         if (player == null)
         {
             Debug.LogWarning(
-                "[WeaponInventory] Player reference is missing."
+                "[WeaponInventory] Player reference missing."
             );
 
             return;
@@ -141,7 +157,7 @@ public class WeaponInventory : MonoBehaviour
         if (pickupTarget == null)
         {
             Debug.LogWarning(
-                "[WeaponInventory] Pickup Target is missing."
+                "[WeaponInventory] Pickup Target missing."
             );
 
             return;
@@ -153,7 +169,7 @@ public class WeaponInventory : MonoBehaviour
         if (playerCamera == null)
         {
             Debug.LogWarning(
-                "[WeaponInventory] Player camera could not be found."
+                "[WeaponInventory] Player camera missing."
             );
 
             return;
@@ -188,8 +204,8 @@ public class WeaponInventory : MonoBehaviour
         if (pickup == null)
         {
             Debug.Log(
-                $"[WeaponInventory] '{hit.collider.name}' " +
-                "does not contain a GunPickup."
+                "[WeaponInventory] Object under crosshair " +
+                "does not have GunPickup."
             );
 
             return;
@@ -205,26 +221,10 @@ public class WeaponInventory : MonoBehaviour
             );
 
         if (!started)
-        {
-            Debug.LogWarning(
-                $"[WeaponInventory] BeginPickup failed for " +
-                $"'{pickup.gameObject.name}'."
-            );
-
             return;
-        }
 
-        // Reserve the slot only AFTER BeginPickup succeeds.
         incomingWeapons++;
         pickupLocked = true;
-
-        Debug.Log(
-            $"[WeaponInventory] Started pickup: " +
-            $"{pickup.gameObject.name}. " +
-            $"Current={weapons.Count}, " +
-            $"Incoming={incomingWeapons}, " +
-            $"Max={maxWeapons}"
-        );
     }
 
     public bool CanAcceptWeapon()
@@ -247,8 +247,7 @@ public class WeaponInventory : MonoBehaviour
         if (item == null)
         {
             Debug.LogWarning(
-                "[WeaponInventory] Completed pickup " +
-                "had no WeaponItem."
+                "[WeaponInventory] WeaponItem was null."
             );
 
             return;
@@ -265,120 +264,88 @@ public class WeaponInventory : MonoBehaviour
 
         weapons.Add(item);
 
-        Debug.Log(
-            $"[WeaponInventory] INSTANCE {GetInstanceID()} " +
-            $"added {item.weaponName}. " +
-            $"Count={weapons.Count}/{maxWeapons}"
-        );
+        // Create the actual visible floating gun.
+        CreateActiveGun(item);
 
-        // First weapon automatically becomes selected.
         if (selectedIndex < 0)
         {
             selectedIndex = 0;
-            DisplaySelectedWeapon();
         }
 
+        RefreshOrbit();
         RefreshUI();
 
         Debug.Log(
-            $"[WeaponInventory] Added WeaponItem " +
-            $"asset='{item.name}', " +
-            $"WeaponName='{item.weaponName}', " +
-            $"Icon='{(item.icon != null ? item.icon.name : "NULL")}', " +
+            $"[WeaponInventory] Added {item.weaponName}. " +
             $"Inventory: {weapons.Count}/{maxWeapons}"
         );
     }
 
-    // DISPLAY / EQUIP
-    private void DisplaySelectedWeapon()
+    // ACTIVE / FLOATING GUNS
+    private void CreateActiveGun(WeaponItem item)
     {
-        if (displayedGun != null)
-        {
-            Destroy(displayedGun.gameObject);
-            displayedGun = null;
-        }
-
-        if (weapons.Count == 0)
-        {
-            selectedIndex = -1;
-
-            if (player != null)
-            {
-                player.UnequipGun();
-            }
-
-            RefreshUI();
-            return;
-        }
-
-        selectedIndex =
-            Mathf.Clamp(
-                selectedIndex,
-                0,
-                weapons.Count - 1
-            );
-
-        WeaponItem item =
-            weapons[selectedIndex];
-
         if (item == null)
-        {
-            Debug.LogWarning(
-                "[WeaponInventory] Selected WeaponItem is null."
-            );
-
             return;
-        }
 
         if (item.equippedPrefab == null)
         {
             Debug.LogWarning(
                 $"[WeaponInventory] {item.weaponName} " +
-                "has no equipped prefab."
+                "has no Equipped Prefab."
             );
 
             return;
         }
 
-        if (weaponSocket == null)
+        if (weaponOrbit == null)
         {
             Debug.LogWarning(
-                "[WeaponInventory] Weapon Socket is missing."
+                "[WeaponInventory] Weapon Orbit is not assigned."
             );
 
             return;
         }
 
-        displayedGun =
+        Gun newGun =
             Instantiate(
                 item.equippedPrefab,
-                weaponSocket
+                weaponOrbit.transform
             );
 
-        displayedGun.transform.localPosition =
+        newGun.transform.localPosition =
             Vector3.zero;
 
-        displayedGun.transform.localRotation =
+        newGun.transform.localRotation =
             Quaternion.identity;
 
-        PrepareEquippedWeapon(
-            displayedGun.gameObject
+        PrepareActiveGun(
+            newGun.gameObject
         );
 
-        if (player != null)
+        Camera playerCamera =
+            player != null
+                ? player.GetPlayerCamera()
+                : null;
+
+        if (playerCamera != null)
         {
-            player.EquipGun(displayedGun);
+            newGun.SetCamera(playerCamera);
         }
 
-        RefreshUI();
+        activeGuns.Add(newGun);
+
+        Debug.Log(
+            $"[WeaponInventory] Created floating gun: " +
+            $"{newGun.name}"
+        );
     }
 
-    private void PrepareEquippedWeapon(
-        GameObject gunObject)
+    private void PrepareActiveGun(GameObject gunObject)
     {
         if (gunObject == null)
             return;
 
+        // Prevent floating guns from being picked up again.
         GunPickup[] pickups =
             gunObject.GetComponentsInChildren<GunPickup>(
                 true
@@ -389,6 +356,7 @@ public class WeaponInventory : MonoBehaviour
             pickup.enabled = false;
         }
 
+        // Disable the old world spinning/twirl behaviour.
         WeaponTwirl[] twirls =
             gunObject.GetComponentsInChildren<WeaponTwirl>(
                 true
@@ -399,6 +367,7 @@ public class WeaponInventory : MonoBehaviour
             twirl.enabled = false;
         }
 
+        // Floating guns should not fall.
         Rigidbody[] rigidbodies =
             gunObject.GetComponentsInChildren<Rigidbody>(
                 true
@@ -410,6 +379,7 @@ public class WeaponInventory : MonoBehaviour
             body.isKinematic = true;
         }
 
+        // Floating guns do not need physical collision.
         Collider[] colliders =
             gunObject.GetComponentsInChildren<Collider>(
                 true
@@ -419,207 +389,65 @@ public class WeaponInventory : MonoBehaviour
         {
             col.enabled = false;
         }
-
-        WeaponInventory[] accidentalInventories =
-            gunObject.GetComponentsInChildren<WeaponInventory>(
-                true
-            );
-
-        foreach (WeaponInventory accidentalInventory
-                 in accidentalInventories)
-        {
-            if (accidentalInventory == this)
-                continue;
-
-            Debug.LogWarning(
-                "[WeaponInventory] Found an accidental " +
-                "WeaponInventory on equipped gun clone: " +
-                accidentalInventory.gameObject.name +
-                ". Disabling it."
-            );
-
-            accidentalInventory.enabled = false;
-        }
     }
 
-    // SCROLL / WEAPON SELECTION
-    private void HandleScrolling()
+    private void RefreshOrbit()
     {
-        if (weapons.Count <= 1)
+        if (weaponOrbit == null)
             return;
 
-        Vector2 scroll =
-            scrollAction.ReadValue<Vector2>();
-
-        if (scroll.y > 0.01f)
-        {
-            MoveSelection(-1);
-        }
-        else if (scroll.y < -0.01f)
-        {
-            MoveSelection(1);
-        }
+        weaponOrbit.SetGuns(activeGuns);
     }
 
-    private void MoveSelection(int direction)
+    // Q / E ROTATION
+    private void HandleWeaponRotation()
     {
-        if (weapons.Count == 0)
+        if (activeGuns.Count == 0)
             return;
 
-        selectedIndex += direction;
-
-        if (selectedIndex < 0)
+        // Q = rotate left
+        if (rotateLeftAction.WasPressedThisFrame())
         {
-            selectedIndex =
-                weapons.Count - 1;
+            weaponOrbit.RotateLeft();
+
+            selectedIndex--;
+
+            if (selectedIndex < 0)
+            {
+                selectedIndex =
+                    weapons.Count - 1;
+            }
+
+            RefreshUI();
         }
 
-        if (selectedIndex >= weapons.Count)
+        // E = rotate right
+        if (rotateRightAction.WasPressedThisFrame())
         {
-            selectedIndex = 0;
-        }
+            weaponOrbit.RotateRight();
 
-        DisplaySelectedWeapon();
+            selectedIndex++;
+
+            if (selectedIndex >= weapons.Count)
+            {
+                selectedIndex = 0;
+            }
+
+            RefreshUI();
+        }
     }
 
     // SHOOT ALL WEAPONS
     public void ShootAllWeapons()
     {
-        if (weapons.Count == 0)
+        if (activeGuns.Count == 0)
             return;
 
-        StartCoroutine(
-            ShootAllRoutine()
-        );
-    }
-
-    private IEnumerator ShootAllRoutine()
-    {
-        for (int i = 0; i < weapons.Count; i++)
+        foreach (Gun gun in activeGuns)
         {
-            WeaponItem item =
-                weapons[i];
-
-            if (item == null)
-                continue;
-
-            if (item.equippedPrefab == null)
-                continue;
-
-            // Selected gun already exists.
-            if (i == selectedIndex &&
-                displayedGun != null)
+            if (gun != null)
             {
-                displayedGun.Shoot();
-                continue;
-            }
-
-            Gun temporaryGun =
-                Instantiate(
-                    item.equippedPrefab,
-                    weaponSocket
-                );
-
-            temporaryGun.transform.localPosition =
-                Vector3.zero;
-
-            temporaryGun.transform.localRotation =
-                Quaternion.identity;
-
-            Camera playerCamera =
-                player != null
-                    ? player.GetPlayerCamera()
-                    : null;
-
-            if (playerCamera != null)
-            {
-                temporaryGun.SetCamera(
-                    playerCamera
-                );
-            }
-
-            PrepareTemporaryGun(
-                temporaryGun.gameObject
-            );
-
-            temporaryGun.Shoot();
-
-            yield return null;
-
-            Destroy(
-                temporaryGun.gameObject
-            );
-        }
-    }
-
-    private void PrepareTemporaryGun(
-        GameObject gunObject)
-    {
-        if (gunObject == null)
-            return;
-
-        WeaponTwirl[] twirls =
-            gunObject.GetComponentsInChildren<WeaponTwirl>(
-                true
-            );
-
-        foreach (WeaponTwirl twirl in twirls)
-        {
-            twirl.enabled = false;
-        }
-
-        GunPickup[] pickups =
-            gunObject.GetComponentsInChildren<GunPickup>(
-                true
-            );
-
-        foreach (GunPickup pickup in pickups)
-        {
-            pickup.enabled = false;
-        }
-
-        Collider[] colliders =
-            gunObject.GetComponentsInChildren<Collider>(
-                true
-            );
-
-        foreach (Collider col in colliders)
-        {
-            col.enabled = false;
-        }
-
-        Rigidbody[] bodies =
-            gunObject.GetComponentsInChildren<Rigidbody>(
-                true
-            );
-
-        foreach (Rigidbody body in bodies)
-        {
-            body.useGravity = false;
-            body.isKinematic = true;
-        }
-
-        Renderer[] renderers =
-            gunObject.GetComponentsInChildren<Renderer>(
-                true
-            );
-
-        foreach (Renderer renderer in renderers)
-        {
-            renderer.enabled = false;
-        }
-
-        WeaponInventory[] accidentalInventories =
-            gunObject.GetComponentsInChildren<WeaponInventory>(
-                true
-            );
-
-        foreach (WeaponInventory accidentalInventory
-                 in accidentalInventories)
-        {
-            if (accidentalInventory != this)
-            {
-                accidentalInventory.enabled = false;
+                gun.Shoot();
             }
         }
     }
@@ -656,48 +484,47 @@ public class WeaponInventory : MonoBehaviour
         WeaponItem item =
             weapons[dropIndex];
 
-        weapons.RemoveAt(
-            dropIndex
-        );
+        weapons.RemoveAt(dropIndex);
 
+        // Remove the corresponding floating gun.
+        if (dropIndex < activeGuns.Count)
+        {
+            Gun gun =
+                activeGuns[dropIndex];
+
+            activeGuns.RemoveAt(dropIndex);
+
+            if (gun != null)
+            {
+                Destroy(gun.gameObject);
+            }
+        }
+
+        // Put the gun back into the world.
         SpawnDroppedWeapon(item);
 
         if (weapons.Count == 0)
         {
             selectedIndex = -1;
-
-            if (displayedGun != null)
-            {
-                Destroy(
-                    displayedGun.gameObject
-                );
-
-                displayedGun = null;
-            }
-
-            if (player != null)
-            {
-                player.UnequipGun();
-            }
         }
         else
         {
-            if (selectedIndex >= weapons.Count)
-            {
-                selectedIndex =
-                    weapons.Count - 1;
-            }
-
-            DisplaySelectedWeapon();
+            selectedIndex =
+                Mathf.Clamp(
+                    selectedIndex,
+                    0,
+                    weapons.Count - 1
+                );
         }
 
+        RefreshOrbit();
         RefreshUI();
 
         if (item != null)
         {
             Debug.Log(
-                $"[WeaponInventory] Dropped " +
-                $"{item.weaponName}."
+                $"[WeaponInventory] Dropped {item.weaponName}. " +
+                $"Inventory: {weapons.Count}/{maxWeapons}"
             );
         }
     }
@@ -712,35 +539,36 @@ public class WeaponInventory : MonoBehaviour
         {
             Debug.LogWarning(
                 $"[WeaponInventory] {item.weaponName} " +
-                "has no world prefab."
+                "has no World Prefab."
             );
 
             return;
         }
 
-        Camera camera =
+        Camera playerCamera =
             player != null
                 ? player.GetPlayerCamera()
                 : null;
 
         Vector3 spawnPosition =
             transform.position +
-            transform.forward;
+            transform.forward *
+            dropForwardDistance;
 
         Quaternion spawnRotation =
             Quaternion.identity;
 
-        if (camera != null)
+        if (playerCamera != null)
         {
             spawnPosition =
-                camera.transform.position +
-                camera.transform.forward *
+                playerCamera.transform.position +
+                playerCamera.transform.forward *
                 dropForwardDistance;
 
             spawnRotation =
                 Quaternion.Euler(
                     0f,
-                    camera.transform.eulerAngles.y,
+                    playerCamera.transform.eulerAngles.y,
                     0f
                 );
         }
