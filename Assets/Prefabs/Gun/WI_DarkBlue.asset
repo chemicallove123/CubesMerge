@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: bdee78cd4418ee148a4d26945ac7c1f2, type: 3}
   m_Name: WI_DarkBlue
   m_EditorClassIdentifier: Assembly-CSharp::WeaponItem
-  weaponName: 
+  weaponName: Gun Dark Blue
   description: 
   icon: {fileID: 21300000, guid: a8227cc9e6bb29a4880eee8efab7ffe1, type: 3}
   equippedPrefab: {fileID: 1949358691310861298, guid: e11d11d0941fbc348a1aa33b8e26770f, type: 3}

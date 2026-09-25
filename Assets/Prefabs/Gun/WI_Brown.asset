@@ -10,10 +10,10 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: bdee78cd4418ee148a4d26945ac7c1f2, type: 3}
-  m_Name: WI_Purple
+  m_Name: WI_Brown
   m_EditorClassIdentifier: Assembly-CSharp::WeaponItem
-  weaponName: Gun_Purple
+  weaponName: Gun Brown
   description: 
-  icon: {fileID: 21300000, guid: efe9c1d9f68f2b64a9b62c3b723cf453, type: 3}
-  equippedPrefab: {fileID: 873829096535073916, guid: bd3b14a36c4361446bb8c6ae459d63e4, type: 3}
-  worldPrefab: {fileID: 1504132825855771592, guid: bd3b14a36c4361446bb8c6ae459d63e4, type: 3}
+  icon: {fileID: 21300000, guid: b0f99469c038de64ab2b429ea752c12e, type: 3}
+  equippedPrefab: {fileID: 54371265172963695, guid: 80c08f9ac4bf5fd488942580709e95f8, type: 3}
+  worldPrefab: {fileID: 1747005623006095067, guid: 80c08f9ac4bf5fd488942580709e95f8, type: 3}

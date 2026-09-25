@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -11,12 +12,11 @@ public class WeaponInventory : MonoBehaviour
     [SerializeField] private WeaponInventoryUI inventoryUI;
 
     [Header("Inventory")]
-    [SerializeField] private int maxWeapons = 10;
+    [SerializeField] private int maxWeapons = 12;
 
     [Header("Pickup")]
     [SerializeField] private float pickupRange = 6f;
     [SerializeField] private LayerMask pickupLayerMask;
-    [SerializeField] private float pickupInterval = 0.15f;
 
     [Header("Drop")]
     [SerializeField] private float dropInterval = 0.3f;
@@ -25,10 +25,7 @@ public class WeaponInventory : MonoBehaviour
     private readonly List<WeaponItem> weapons =
         new List<WeaponItem>();
 
-    // Every collected weapon gets a runtime gun.
-    // Only the selected gun is visible.
-    private readonly List<Gun> runtimeGuns =
-        new List<Gun>();
+    private Gun displayedGun;
 
     private int selectedIndex = -1;
 
@@ -36,18 +33,23 @@ public class WeaponInventory : MonoBehaviour
     private InputAction dropAction;
     private InputAction scrollAction;
 
-    private float nextPickupTime;
     private float nextDropTime;
 
-    private int incomingWeapons;
+    private int incomingWeapons = 0;
+    private bool pickupLocked = false;
 
     public int WeaponCount => weapons.Count;
     public int SelectedIndex => selectedIndex;
 
     private void Awake()
     {
+        Debug.Log(
+            $"[WeaponInventory] AWAKE on '{gameObject.name}' " +
+            $"InstanceID={GetInstanceID()}"
+        );
+
         pickupAction = new InputAction(
-            "PickUpWeapons",
+            "PickUpWeapon",
             InputActionType.Button,
             "<Keyboard>/f"
         );
@@ -67,23 +69,23 @@ public class WeaponInventory : MonoBehaviour
 
     private void OnEnable()
     {
-        pickupAction.Enable();
-        dropAction.Enable();
-        scrollAction.Enable();
+        pickupAction?.Enable();
+        dropAction?.Enable();
+        scrollAction?.Enable();
     }
 
     private void OnDisable()
     {
-        pickupAction.Disable();
-        dropAction.Disable();
-        scrollAction.Disable();
+        pickupAction?.Disable();
+        dropAction?.Disable();
+        scrollAction?.Disable();
     }
 
     private void OnDestroy()
     {
-        pickupAction.Dispose();
-        dropAction.Dispose();
-        scrollAction.Dispose();
+        pickupAction?.Dispose();
+        dropAction?.Dispose();
+        scrollAction?.Dispose();
     }
 
     private void Start()
@@ -98,77 +100,131 @@ public class WeaponInventory : MonoBehaviour
         HandleScrolling();
     }
 
+  
     // PICKUP
     private void HandlePickup()
     {
-        if (!pickupAction.IsPressed())
+        if (!pickupAction.WasPressedThisFrame())
             return;
 
-        if (Time.time < nextPickupTime)
+        if (pickupLocked)
             return;
 
-        nextPickupTime =
-            Time.time + pickupInterval;
+        if (incomingWeapons > 0)
+            return;
 
-        TryPickupNearestWeapon();
+        TryPickupCrosshairWeapon();
     }
 
-    private void TryPickupNearestWeapon()
+    private void TryPickupCrosshairWeapon()
     {
+        // Check whether there is room BEFORE starting pickup.
         if (!CanAcceptWeapon())
-            return;
-
-        Vector3 searchPosition =
-            pickupTarget != null
-                ? pickupTarget.position
-                : transform.position;
-
-        Collider[] colliders =
-            Physics.OverlapSphere(
-                searchPosition,
-                pickupRange,
-                pickupLayerMask,
-                QueryTriggerInteraction.Collide
+        {
+            Debug.Log(
+                $"[WeaponInventory] Inventory is full. " +
+                $"{weapons.Count}/{maxWeapons}"
             );
 
-        GunPickup nearestPickup = null;
-
-        float nearestDistance =
-            Mathf.Infinity;
-
-        foreach (Collider hit in colliders)
-        {
-            GunPickup pickup =
-                hit.GetComponentInParent<GunPickup>();
-
-            if (pickup == null)
-                continue;
-
-            if (pickup.IsBeingCollected)
-                continue;
-
-            float distance =
-                Vector3.Distance(
-                    searchPosition,
-                    pickup.transform.position
-                );
-
-            if (distance < nearestDistance)
-            {
-                nearestDistance = distance;
-                nearestPickup = pickup;
-            }
+            return;
         }
 
-        if (nearestPickup == null)
+        if (player == null)
+        {
+            Debug.LogWarning(
+                "[WeaponInventory] Player reference is missing."
+            );
+
+            return;
+        }
+
+        if (pickupTarget == null)
+        {
+            Debug.LogWarning(
+                "[WeaponInventory] Pickup Target is missing."
+            );
+
+            return;
+        }
+
+        Camera playerCamera =
+            player.GetPlayerCamera();
+
+        if (playerCamera == null)
+        {
+            Debug.LogWarning(
+                "[WeaponInventory] Player camera could not be found."
+            );
+
+            return;
+        }
+
+        Ray ray =
+            playerCamera.ViewportPointToRay(
+                new Vector3(
+                    0.5f,
+                    0.5f,
+                    0f
+                )
+            );
+
+        if (!Physics.Raycast(
+            ray,
+            out RaycastHit hit,
+            pickupRange,
+            pickupLayerMask,
+            QueryTriggerInteraction.Collide))
+        {
+            Debug.Log(
+                "[WeaponInventory] No weapon under crosshair."
+            );
+
+            return;
+        }
+
+        GunPickup pickup =
+            hit.collider.GetComponentInParent<GunPickup>();
+
+        if (pickup == null)
+        {
+            Debug.Log(
+                $"[WeaponInventory] '{hit.collider.name}' " +
+                "does not contain a GunPickup."
+            );
+
+            return;
+        }
+
+        if (pickup.IsBeingCollected)
             return;
 
-        if (nearestPickup.BeginPickup(
-            this,
-            pickupTarget))
+        bool started =
+            pickup.BeginPickup(
+                this,
+                pickupTarget
+            );
+
+        if (!started)
         {
-            incomingWeapons++;
+            Debug.LogWarning(
+                $"[WeaponInventory] BeginPickup failed for " +
+                $"'{pickup.gameObject.name}'."
+            );
+
+            return;
         }
+
+        // Reserve the slot only AFTER BeginPickup succeeds.
+        incomingWeapons++;
+        pickupLocked = true;
+
+        Debug.Log(
+            $"[WeaponInventory] Started pickup: " +
+            $"{pickup.gameObject.name}. " +
+            $"Current={weapons.Count}, " +
+            $"Incoming={incomingWeapons}, " +
+            $"Max={maxWeapons}"
+        );
     }
 
     public bool CanAcceptWeapon()
@@ -186,23 +242,22 @@ public class WeaponInventory : MonoBehaviour
                 incomingWeapons - 1
             );
 
+        pickupLocked = false;
+
         if (item == null)
         {
             Debug.LogWarning(
-                "[WeaponInventory] Tried to add a null WeaponItem."
+                "[WeaponInventory] Completed pickup " +
+                "had no WeaponItem."
             );
 
             return;
         }
 
         if (weapons.Count >= maxWeapons)
-            return;
-
-        if (item.equippedPrefab == null)
         {
             Debug.LogWarning(
-                $"[WeaponInventory] {item.weaponName} " +
-                "has no Equipped Prefab assigned."
+                "[WeaponInventory] Inventory is full."
             );
 
             return;
@@ -210,93 +265,153 @@ public class WeaponInventory : MonoBehaviour
 
         weapons.Add(item);
 
-        CreateRuntimeGun(item);
+        Debug.Log(
+            $"[WeaponInventory] INSTANCE {GetInstanceID()} " +
+            $"added {item.weaponName}. " +
+            $"Count={weapons.Count}/{maxWeapons}"
+        );
 
         // First weapon automatically becomes selected.
         if (selectedIndex < 0)
         {
             selectedIndex = 0;
+            DisplaySelectedWeapon();
         }
 
-        UpdateVisibleWeapon();
         RefreshUI();
 
         Debug.Log(
-            $"[WeaponInventory] Added {item.weaponName}. " +
+            $"[WeaponInventory] Added WeaponItem " +
+            $"asset='{item.name}', " +
+            $"WeaponName='{item.weaponName}', " +
+            $"Icon='{(item.icon != null ? item.icon.name : "NULL")}', " +
             $"Inventory: {weapons.Count}/{maxWeapons}"
         );
     }
 
-    // CREATE INVENTORY GUN
-    private void CreateRuntimeGun(WeaponItem item)
+    // DISPLAY / EQUIP
+    private void DisplaySelectedWeapon()
     {
-        if (weaponSocket == null)
+        if (displayedGun != null)
         {
-            Debug.LogError(
-                "[WeaponInventory] Weapon Socket is not assigned!"
+            Destroy(displayedGun.gameObject);
+            displayedGun = null;
+        }
+
+        if (weapons.Count == 0)
+        {
+            selectedIndex = -1;
+
+            if (player != null)
+            {
+                player.UnequipGun();
+            }
+
+            RefreshUI();
+            return;
+        }
+
+        selectedIndex =
+            Mathf.Clamp(
+                selectedIndex,
+                0,
+                weapons.Count - 1
+            );
+
+        WeaponItem item =
+            weapons[selectedIndex];
+
+        if (item == null)
+        {
+            Debug.LogWarning(
+                "[WeaponInventory] Selected WeaponItem is null."
             );
 
             return;
         }
 
-        Gun gun =
+        if (item.equippedPrefab == null)
+        {
+            Debug.LogWarning(
+                $"[WeaponInventory] {item.weaponName} " +
+                "has no equipped prefab."
+            );
+
+            return;
+        }
+
+        if (weaponSocket == null)
+        {
+            Debug.LogWarning(
+                "[WeaponInventory] Weapon Socket is missing."
+            );
+
+            return;
+        }
+
+        displayedGun =
             Instantiate(
                 item.equippedPrefab,
                 weaponSocket
             );
 
-        gun.name =
-            item.weaponName + "_InventoryGun";
-
-        // Put gun directly onto WeaponSocket.
-        gun.transform.localPosition =
+        displayedGun.transform.localPosition =
             Vector3.zero;
 
-        gun.transform.localRotation =
+        displayedGun.transform.localRotation =
             Quaternion.identity;
 
-        PrepareInventoryGun(gun);
+        PrepareEquippedWeapon(
+            displayedGun.gameObject
+        );
 
-        Camera camera =
-            player != null
-                ? player.GetPlayerCamera()
-                : null;
-
-        if (camera != null)
+        if (player != null)
         {
-            gun.SetCamera(camera);
-        }
-        else
-        {
-            Debug.LogWarning(
-                $"[WeaponInventory] Could not assign camera to {gun.name}."
-            );
+            player.EquipGun(displayedGun);
         }
 
-        runtimeGuns.Add(gun);
+        RefreshUI();
     }
 
-    private void PrepareInventoryGun(Gun gun)
+    private void PrepareEquippedWeapon(
+        GameObject gunObject)
     {
-        if (gun == null)
+        if (gunObject == null)
             return;
 
-        // Disable physics because the gun is now
-        // being held by the player.
+        GunPickup[] pickups =
+            gunObject.GetComponentsInChildren<GunPickup>(
+                true
+            );
+
+        foreach (GunPickup pickup in pickups)
+        {
+            pickup.enabled = false;
+        }
+
+        WeaponTwirl[] twirls =
+            gunObject.GetComponentsInChildren<WeaponTwirl>(
+                true
+            );
+
+        foreach (WeaponTwirl twirl in twirls)
+        {
+            twirl.enabled = false;
+        }
+
         Rigidbody[] rigidbodies =
-            gun.GetComponentsInChildren<Rigidbody>(
+            gunObject.GetComponentsInChildren<Rigidbody>(
                 true
             );
 
         foreach (Rigidbody body in rigidbodies)
         {
-            body.isKinematic = true;
             body.useGravity = false;
+            body.isKinematic = true;
         }
 
-        // Disable colliders while the gun is held.
         Collider[] colliders =
-            gun.GetComponentsInChildren<Collider>(
+            gunObject.GetComponentsInChildren<Collider>(
                 true
             );
 
@@ -305,57 +420,29 @@ public class WeaponInventory : MonoBehaviour
             col.enabled = false;
         }
 
-        // A held gun should not be collectible again.
-        GunPickup[] pickups =
-            gun.GetComponentsInChildren<GunPickup>(
+        WeaponInventory[] accidentalInventories =
+            gunObject.GetComponentsInChildren<WeaponInventory>(
                 true
             );
 
-        foreach (GunPickup pickup in pickups)
+        foreach (WeaponInventory accidentalInventory
+                 in accidentalInventories)
         {
-            pickup.enabled = false;
-        }
-    }
-
-    // SELECTED / VISIBLE WEAPON
-
-    private void UpdateVisibleWeapon()
-    {
-        for (int i = 0; i < runtimeGuns.Count; i++)
-        {
-            Gun gun =
-                runtimeGuns[i];
-
-            if (gun == null)
+            if (accidentalInventory == this)
                 continue;
 
-            bool shouldBeVisible =
-                i == selectedIndex;
-
-            SetGunVisible(
-                gun,
-                shouldBeVisible
+            Debug.LogWarning(
+                "[WeaponInventory] Found an accidental " +
+                "WeaponInventory on equipped gun clone: " +
+                accidentalInventory.gameObject.name +
+                ". Disabling it."
             );
+
+            accidentalInventory.enabled = false;
         }
     }
 
-    private void SetGunVisible(
-        Gun gun,
-        bool visible)
-    {
-        Renderer[] renderers =
-            gun.GetComponentsInChildren<Renderer>(
-                true
-            );
-
-        foreach (Renderer renderer in renderers)
-        {
-            renderer.enabled = visible;
-        }
-    }
-
-    // SCROLLING
-
+    // SCROLL / WEAPON SELECTION
     private void HandleScrolling()
     {
         if (weapons.Count <= 1)
@@ -392,46 +479,152 @@ public class WeaponInventory : MonoBehaviour
             selectedIndex = 0;
         }
 
-        UpdateVisibleWeapon();
-        RefreshUI();
+        DisplaySelectedWeapon();
     }
 
-    // SHOOT ALL COLLECTED WEAPONS
-
+    // SHOOT ALL WEAPONS
     public void ShootAllWeapons()
     {
-        Debug.Log(
-            $"[INVENTORY] ShootAllWeapons called. " +
-            $"Runtime guns: {runtimeGuns.Count}"
-        );
-
-        if (runtimeGuns.Count == 0)
-        {
-            Debug.LogWarning(
-                "[INVENTORY] There are no runtime guns to shoot."
-            );
-
+        if (weapons.Count == 0)
             return;
-        }
 
-        for (int i = 0; i < runtimeGuns.Count; i++)
+        StartCoroutine(
+            ShootAllRoutine()
+        );
+    }
+
+    private IEnumerator ShootAllRoutine()
+    {
+        for (int i = 0; i < weapons.Count; i++)
         {
-            Gun gun =
-                runtimeGuns[i];
+            WeaponItem item =
+                weapons[i];
 
-            if (gun == null)
+            if (item == null)
                 continue;
 
-            Debug.Log(
-                $"[INVENTORY] Shooting gun {i}: {gun.name}"
+            if (item.equippedPrefab == null)
+                continue;
+
+            // Selected gun already exists.
+            if (i == selectedIndex &&
+                displayedGun != null)
+            {
+                displayedGun.Shoot();
+                continue;
+            }
+
+            Gun temporaryGun =
+                Instantiate(
+                    item.equippedPrefab,
+                    weaponSocket
+                );
+
+            temporaryGun.transform.localPosition =
+                Vector3.zero;
+
+            temporaryGun.transform.localRotation =
+                Quaternion.identity;
+
+            Camera playerCamera =
+                player != null
+                    ? player.GetPlayerCamera()
+                    : null;
+
+            if (playerCamera != null)
+            {
+                temporaryGun.SetCamera(
+                    playerCamera
+                );
+            }
+
+            PrepareTemporaryGun(
+                temporaryGun.gameObject
             );
 
-            gun.Shoot();
+            temporaryGun.Shoot();
+
+            yield return null;
+
+            Destroy(
+                temporaryGun.gameObject
+            );
+        }
+    }
+
+    private void PrepareTemporaryGun(
+        GameObject gunObject)
+    {
+        if (gunObject == null)
+            return;
+
+        WeaponTwirl[] twirls =
+            gunObject.GetComponentsInChildren<WeaponTwirl>(
+                true
+            );
+
+        foreach (WeaponTwirl twirl in twirls)
+        {
+            twirl.enabled = false;
+        }
+
+        GunPickup[] pickups =
+            gunObject.GetComponentsInChildren<GunPickup>(
+                true
+            );
+
+        foreach (GunPickup pickup in pickups)
+        {
+            pickup.enabled = false;
+        }
+
+        Collider[] colliders =
+            gunObject.GetComponentsInChildren<Collider>(
+                true
+            );
+
+        foreach (Collider col in colliders)
+        {
+            col.enabled = false;
+        }
+
+        Rigidbody[] bodies =
+            gunObject.GetComponentsInChildren<Rigidbody>(
+                true
+            );
+
+        foreach (Rigidbody body in bodies)
+        {
+            body.useGravity = false;
+            body.isKinematic = true;
+        }
+
+        Renderer[] renderers =
+            gunObject.GetComponentsInChildren<Renderer>(
+                true
+            );
+
+        foreach (Renderer renderer in renderers)
+        {
+            renderer.enabled = false;
+        }
+
+        WeaponInventory[] accidentalInventories =
+            gunObject.GetComponentsInChildren<WeaponInventory>(
+                true
+            );
+
+        foreach (WeaponInventory accidentalInventory
+                 in accidentalInventories)
+        {
+            if (accidentalInventory != this)
+            {
+                accidentalInventory.enabled = false;
+            }
         }
     }
 
     // DROP
-
     private void HandleDrop()
     {
         if (!dropAction.IsPressed())
@@ -440,8 +633,9 @@ public class WeaponInventory : MonoBehaviour
         if (Time.time < nextDropTime)
             return;
 
-        // Do not allow dropping while guns
-        // are still flying toward the player.
+        if (pickupLocked)
+            return;
+
         if (incomingWeapons > 0)
             return;
 
@@ -456,40 +650,35 @@ public class WeaponInventory : MonoBehaviour
         if (weapons.Count == 0)
             return;
 
-        // LIFO:
-        // Last weapon collected is dropped first.
         int dropIndex =
             weapons.Count - 1;
 
         WeaponItem item =
             weapons[dropIndex];
 
-        weapons.RemoveAt(dropIndex);
+        weapons.RemoveAt(
+            dropIndex
+        );
 
-        // Remove its hidden/held runtime gun.
-        if (dropIndex < runtimeGuns.Count)
-        {
-            Gun runtimeGun =
-                runtimeGuns[dropIndex];
-
-            runtimeGuns.RemoveAt(
-                dropIndex
-            );
-
-            if (runtimeGun != null)
-            {
-                Destroy(
-                    runtimeGun.gameObject
-                );
-            }
-        }
-
-        // Put the world version back into the scene.
         SpawnDroppedWeapon(item);
 
         if (weapons.Count == 0)
         {
             selectedIndex = -1;
+
+            if (displayedGun != null)
+            {
+                Destroy(
+                    displayedGun.gameObject
+                );
+
+                displayedGun = null;
+            }
+
+            if (player != null)
+            {
+                player.UnequipGun();
+            }
         }
         else
         {
@@ -498,15 +687,19 @@ public class WeaponInventory : MonoBehaviour
                 selectedIndex =
                     weapons.Count - 1;
             }
+
+            DisplaySelectedWeapon();
         }
 
-        UpdateVisibleWeapon();
         RefreshUI();
 
-        Debug.Log(
-            $"[WeaponInventory] Dropped {item.weaponName}. " +
-            $"Inventory: {weapons.Count}/{maxWeapons}"
-        );
+        if (item != null)
+        {
+            Debug.Log(
+                $"[WeaponInventory] Dropped " +
+                $"{item.weaponName}."
+            );
+        }
     }
 
     private void SpawnDroppedWeapon(
@@ -519,7 +712,7 @@ public class WeaponInventory : MonoBehaviour
         {
             Debug.LogWarning(
                 $"[WeaponInventory] {item.weaponName} " +
-                "has no World Prefab assigned."
+                "has no world prefab."
             );
 
             return;
@@ -560,7 +753,6 @@ public class WeaponInventory : MonoBehaviour
     }
 
     // UI
-
     private void RefreshUI()
     {
         if (inventoryUI == null)

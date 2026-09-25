@@ -3,72 +3,77 @@ using UnityEngine.InputSystem;
 
 public class Interactor : MonoBehaviour
 {
+    [Header("References")]
     [SerializeField] private Camera playerCamera;
-    [SerializeField] private float interactRange = 3f;
-    [SerializeField] private LayerMask interactLayerMask; // F - guns
-    [SerializeField] private LayerMask readLayerMask;      // E - signs
 
-    private InputAction interactAction;
+    [Header("Interaction")]
+    [SerializeField] private float interactRange = 3f;
+
+    [Tooltip("Layer used for readable/interactable objects such as signs.")]
+    [SerializeField] private LayerMask readLayerMask;
+
     private InputAction readAction;
 
     private void Awake()
     {
-        interactAction = new InputAction("Interact", InputActionType.Button, "<Keyboard>/f");
-        readAction = new InputAction("Read", InputActionType.Button, "<Keyboard>/e");
+        readAction = new InputAction(
+            "Read",
+            InputActionType.Button,
+            "<Keyboard>/e"
+        );
     }
 
     private void OnEnable()
     {
-        interactAction?.Enable();
-        readAction?.Enable();
+        readAction.Enable();
     }
 
     private void OnDisable()
     {
-        interactAction?.Disable();
-        readAction?.Disable();
+        readAction.Disable();
     }
 
     private void OnDestroy()
     {
-        interactAction?.Dispose();
-        readAction?.Dispose();
+        readAction.Dispose();
     }
 
     private void Update()
     {
         if (readAction.WasPressedThisFrame())
-            TryInteract(readLayerMask, "E");
+        {
+            TryInteract();
+        }
     }
 
-    private void TryInteract(LayerMask layerMask, string keyLabel)
+    private void TryInteract()
     {
         if (playerCamera == null)
         {
-            Debug.LogWarning("[Interactor] Player Camera is not assigned - can't raycast.");
+            Debug.LogWarning(
+                "[Interactor] Player Camera is not assigned."
+            );
             return;
         }
 
-        Debug.Log($"[Interactor] {keyLabel} pressed - casting interact ray.");
+        Ray ray = playerCamera.ViewportPointToRay(
+            new Vector3(0.5f, 0.5f, 0f)
+        );
 
-        Ray ray = new Ray(playerCamera.transform.position, playerCamera.transform.forward);
-        if (Physics.Raycast(ray, out RaycastHit hit, interactRange, layerMask))
+        if (Physics.Raycast(
+            ray,
+            out RaycastHit hit,
+            interactRange,
+            readLayerMask,
+            QueryTriggerInteraction.Collide))
         {
-            Debug.Log($"[Interactor] Ray hit: {hit.collider.name}");
+            IInteractable interactable =
+                hit.collider.GetComponentInParent<IInteractable>();
 
-            if (hit.collider.TryGetComponent(out IInteractable interactable))
+            if (interactable != null)
             {
-                Debug.Log($"[Interactor] Found IInteractable on {hit.collider.name} - calling Interact().");
                 interactable.Interact();
             }
-            else
-            {
-                Debug.Log($"[Interactor] {hit.collider.name} does not implement IInteractable - nothing to interact with.");
-            }
-        }
-        else
-        {
-            Debug.Log("[Interactor] Ray hit nothing within range - not close enough or not aimed at it.");
         }
     }
 }

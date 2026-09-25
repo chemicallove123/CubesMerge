@@ -10,10 +10,10 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: bdee78cd4418ee148a4d26945ac7c1f2, type: 3}
-  m_Name: WI_Purple
+  m_Name: Gun_DarkGreen
   m_EditorClassIdentifier: Assembly-CSharp::WeaponItem
-  weaponName: Gun_Purple
+  weaponName: Gun Dark Green
   description: 
-  icon: {fileID: 21300000, guid: efe9c1d9f68f2b64a9b62c3b723cf453, type: 3}
-  equippedPrefab: {fileID: 873829096535073916, guid: bd3b14a36c4361446bb8c6ae459d63e4, type: 3}
-  worldPrefab: {fileID: 1504132825855771592, guid: bd3b14a36c4361446bb8c6ae459d63e4, type: 3}
+  icon: {fileID: 21300000, guid: d007d902aa1466b4bb97b932ca061f90, type: 3}
+  equippedPrefab: {fileID: 14766249268296971, guid: 96f8df7cd2e5ec14a874568c2beba25e, type: 3}
+  worldPrefab: {fileID: 1786737079778138815, guid: 96f8df7cd2e5ec14a874568c2beba25e, type: 3}
