@@ -3,28 +3,36 @@ using UnityEngine;
 
 public class WeaponOrbit : MonoBehaviour
 {
+    [Header("Follow")]
+    [Tooltip("Usually the Main Camera.")]
+    [SerializeField] private Transform followTarget;
+
+    [Tooltip("Local offset from the camera/player.")]
+    [SerializeField] private Vector3 followOffset = Vector3.zero;
+
     [Header("Orbit")]
-    [SerializeField] private float radius = 2.2f;
-    [SerializeField] private float height = -0.3f;
+    [SerializeField] private float radius = 0.5f;
+    [SerializeField] private float height = -0.35f;
 
     [Header("Rotation")]
     [SerializeField] private float rotationStep = 30f;
     [SerializeField] private float rotationSpeed = 8f;
 
-    [Header("Gun Orientation")]
-    [Tooltip("Extra rotation applied to every gun.")]
-    [SerializeField] private Vector3 gunRotationOffset = Vector3.zero;
-
     private readonly List<Transform> guns =
         new List<Transform>();
+
+    private readonly List<WeaponItem> weaponItems =
+        new List<WeaponItem>();
 
     private float targetRotation = 0f;
     private float currentRotation = 0f;
 
     public int GunCount => guns.Count;
 
-    private void Update()
+    private void LateUpdate()
     {
+        FollowTarget();
+
         currentRotation = Mathf.LerpAngle(
             currentRotation,
             targetRotation,
@@ -34,9 +42,26 @@ public class WeaponOrbit : MonoBehaviour
         UpdateGunPositions();
     }
 
-    public void SetGuns(List<Gun> gunList)
+    // FOLLOW CAMERA / PLAYER
+    private void FollowTarget()
+    {
+        if (followTarget == null)
+            return;
+
+        transform.position =
+            followTarget.TransformPoint(followOffset);
+
+        transform.rotation =
+            followTarget.rotation;
+    }
+
+    // SET GUNS
+    public void SetGuns(
+        List<Gun> gunList,
+        List<WeaponItem> itemList)
     {
         guns.Clear();
+        weaponItems.Clear();
 
         if (gunList != null)
         {
@@ -49,9 +74,18 @@ public class WeaponOrbit : MonoBehaviour
             }
         }
 
+        if (itemList != null)
+        {
+            foreach (WeaponItem item in itemList)
+            {
+                weaponItems.Add(item);
+            }
+        }
+
         UpdateGunPositions();
     }
 
+    // ROTATION INPUT
     public void RotateLeft()
     {
         if (guns.Count == 0)
@@ -78,6 +112,7 @@ public class WeaponOrbit : MonoBehaviour
         return rotationStep;
     }
 
+    // GUN POSITIONS
     private void UpdateGunPositions()
     {
         if (guns.Count == 0)
@@ -109,25 +144,36 @@ public class WeaponOrbit : MonoBehaviour
 
             gun.localPosition = localPosition;
 
-            Vector3 outwardDirection =
-                new Vector3(
-                    localPosition.x,
-                    0f,
-                    localPosition.z
-                );
+            // Make weapon point forward with the camera.
+            Quaternion baseRotation =
+                Quaternion.identity;
 
-            if (outwardDirection.sqrMagnitude > 0.001f)
+            // Apply individual weapon rotation offset.
+            // This allows the Rocket Launcher to use Y = 180
+            // without rotating every other gun.
+            Vector3 rotationOffset =
+                Vector3.zero;
+
+            if (i < weaponItems.Count &&
+                weaponItems[i] != null)
             {
-                Quaternion outwardRotation =
-                    Quaternion.LookRotation(
-                        outwardDirection.normalized,
-                        Vector3.up
-                    );
-
-                gun.localRotation =
-                    outwardRotation *
-                    Quaternion.Euler(gunRotationOffset);
+                rotationOffset =
+                    weaponItems[i]
+                        .equippedRotationOffset;
             }
+
+            gun.localRotation =
+                baseRotation *
+                Quaternion.Euler(rotationOffset);
         }
+    }
+
+    // DEBUG
+    private void OnDrawGizmosSelected()
+    {
+        Gizmos.DrawWireSphere(
+            transform.position,
+            radius
+        );
     }
 }

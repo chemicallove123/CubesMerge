@@ -17,3 +17,4 @@ MonoBehaviour:
   icon: {fileID: 21300000, guid: efe9c1d9f68f2b64a9b62c3b723cf453, type: 3}
   equippedPrefab: {fileID: 873829096535073916, guid: bd3b14a36c4361446bb8c6ae459d63e4, type: 3}
   worldPrefab: {fileID: 1504132825855771592, guid: bd3b14a36c4361446bb8c6ae459d63e4, type: 3}
+  equippedRotationOffset: {x: 0, y: 100, z: 0}

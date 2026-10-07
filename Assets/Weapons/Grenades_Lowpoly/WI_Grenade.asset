@@ -1,0 +1,19 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bdee78cd4418ee148a4d26945ac7c1f2, type: 3}
+  m_Name: WI_Grenade
+  m_EditorClassIdentifier: Assembly-CSharp::WeaponItem
+  weaponName: Grenade
+  description: 
+  icon: {fileID: 21300000, guid: 581575537b42cae4694b409906cf4a8e, type: 3}
+  equippedPrefab: {fileID: -464935823273980581, guid: 3605ffb59aa43f94a965ff4a93d8fa2d, type: 3}
+  worldPrefab: {fileID: 2973782643037900867, guid: 3605ffb59aa43f94a965ff4a93d8fa2d, type: 3}

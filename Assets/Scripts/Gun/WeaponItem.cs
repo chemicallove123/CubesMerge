@@ -1,8 +1,8 @@
 using UnityEngine;
 
 [CreateAssetMenu(
-    fileName = "WeaponItem",
-    menuName = "CubesMerge/Weapon Item"
+    fileName = "NewWeaponItem",
+    menuName = "Weapons/Weapon Item"
 )]
 public class WeaponItem : ScriptableObject
 {
@@ -16,9 +16,13 @@ public class WeaponItem : ScriptableObject
     public Sprite icon;
 
     [Header("Prefabs")]
-    [Tooltip("Prefab displayed in the player's hand.")]
     public Gun equippedPrefab;
-
-    [Tooltip("Prefab spawned back into the world when dropped.")]
     public GameObject worldPrefab;
+
+    [Header("Equipped Weapon Transform")]
+    [Tooltip(
+        "Extra rotation for this weapon while it is floating " +
+        "around the player."
+    )]
+    public Vector3 equippedRotationOffset = Vector3.zero;
 }

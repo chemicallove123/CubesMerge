@@ -1,4 +1,3 @@
-using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -264,7 +263,6 @@ public class WeaponInventory : MonoBehaviour
 
         weapons.Add(item);
 
-        // Create the actual visible floating gun.
         CreateActiveGun(item);
 
         if (selectedIndex < 0)
@@ -315,8 +313,6 @@ public class WeaponInventory : MonoBehaviour
         newGun.transform.localPosition =
             Vector3.zero;
 
-        newGun.transform.localRotation =
-            Quaternion.identity;
 
         PrepareActiveGun(
             newGun.gameObject
@@ -345,7 +341,6 @@ public class WeaponInventory : MonoBehaviour
         if (gunObject == null)
             return;
 
-        // Prevent floating guns from being picked up again.
         GunPickup[] pickups =
             gunObject.GetComponentsInChildren<GunPickup>(
                 true
@@ -356,7 +351,6 @@ public class WeaponInventory : MonoBehaviour
             pickup.enabled = false;
         }
 
-        // Disable the old world spinning/twirl behaviour.
         WeaponTwirl[] twirls =
             gunObject.GetComponentsInChildren<WeaponTwirl>(
                 true
@@ -367,7 +361,6 @@ public class WeaponInventory : MonoBehaviour
             twirl.enabled = false;
         }
 
-        // Floating guns should not fall.
         Rigidbody[] rigidbodies =
             gunObject.GetComponentsInChildren<Rigidbody>(
                 true
@@ -379,7 +372,6 @@ public class WeaponInventory : MonoBehaviour
             body.isKinematic = true;
         }
 
-        // Floating guns do not need physical collision.
         Collider[] colliders =
             gunObject.GetComponentsInChildren<Collider>(
                 true
@@ -396,7 +388,10 @@ public class WeaponInventory : MonoBehaviour
         if (weaponOrbit == null)
             return;
 
-        weaponOrbit.SetGuns(activeGuns);
+        weaponOrbit.SetGuns(
+            activeGuns,
+            weapons
+        );
     }
 
     // Q / E ROTATION
@@ -405,7 +400,6 @@ public class WeaponInventory : MonoBehaviour
         if (activeGuns.Count == 0)
             return;
 
-        // Q = rotate left
         if (rotateLeftAction.WasPressedThisFrame())
         {
             weaponOrbit.RotateLeft();
@@ -421,7 +415,6 @@ public class WeaponInventory : MonoBehaviour
             RefreshUI();
         }
 
-        // E = rotate right
         if (rotateRightAction.WasPressedThisFrame())
         {
             weaponOrbit.RotateRight();
@@ -486,7 +479,6 @@ public class WeaponInventory : MonoBehaviour
 
         weapons.RemoveAt(dropIndex);
 
-        // Remove the corresponding floating gun.
         if (dropIndex < activeGuns.Count)
         {
             Gun gun =
@@ -500,7 +492,6 @@ public class WeaponInventory : MonoBehaviour
             }
         }
 
-        // Put the gun back into the world.
         SpawnDroppedWeapon(item);
 
         if (weapons.Count == 0)
